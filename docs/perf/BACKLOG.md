@@ -281,12 +281,18 @@ Merged into `perf/android10` (see `docs/perf/RESULTS.md` for the measurements):
 | #16 | EVG-B3 to EVG-B7 |
 | #17 | Plan R5b, R5c (widget picker, unused icon preload) |
 | #18 | EVG-B2, plan V1-V4 (tablet device type, grid, dock, drawer) |
+| #21 | Plan R4c (folder first open), drawer first open (deferred list layout) |
+| #22 | EVG-15f |
 
 Still open, roughly in priority order:
-- Plan R2c: workspace hardware layer and system bar scrim during the drawer transition (needs Perfetto).
-- Plan R4b, R4c: folder reveal path and first-open warm-up.
+- Drawer sheet drawn twice per pixel (overdraw view); the second layer is not identified yet.
+- Plan R2c: the long drawer, folder and menu frames are GL driver time (`flush commands`), not
+  layout or uploads. Fewer draw calls would be the lever (for example a hardware layer for the
+  static workspace behind folders); not tried.
+- Plan R4b: folder reveal path; only matters for squircle icon shapes.
 - Plan R5a: widget picker open frame (inflation, double bind). Not reproduced in the afternoon runs.
-- Plan V5-V7: folder look, motion review, corner radius family.
+- Plan V5 and V7 need no change: folder and popup colours already come from the wallpaper
+  palette, and sheets, popups and folders share a 24 dp radius. V6 (drawer duration) left as is.
 - EVG-1b: confirm with a log first.
 - EVG-1e, EVG-1f: only relevant with an icon pack or system icon overrides.
 - EVG-15b: `onTrimMemory`.
