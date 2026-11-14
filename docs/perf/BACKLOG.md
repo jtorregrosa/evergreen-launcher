@@ -248,6 +248,12 @@ adb shell setprop debug.hwui.overdraw show
 
 EVG-1 and EVG-2 barely move startup: the real wipe was caused by EVG-3b, which was masking the column fix. With EVG-3b the icon cache is finally read from the DB.
 
+## Bugs fixed along the way
+
+| ID | Bug | Cause | Fix |
+|---|---|---|---|
+| EVG-B1 | Web suggestion rows in drawer search show an empty text on tablets | `search_result_small_icon_row.xml` used `dynamic_grid_edge_margin` as vertical padding; on sw720dp it is 27.59dp, so top+bottom padding (55dp) plus the title exceeded the 56dp row and the title was clipped | Drop the vertical padding (the block is already centered) |
+
 ## 6. Discarded or corrected
 
 | Finding | Reason |
