@@ -1,8 +1,10 @@
 # Evergreen tablet pass: analysis and implementation plan
 
 - **Date:** 2026-11-14. **Build analysed:** `evergreen` at `4211efc` (same tree as `perf/android10` at `fdc054e`).
-- **Status:** analysis and plan only. No launcher code was changed. Sections 6 (visual direction)
-  and 8 (open decisions) need the user's answer before the visible changes start.
+- **Status:** implemented in #12-#18 (see the backlog's implementation status and
+  `docs/perf/RESULTS.md`). Decisions taken: single-panel 6x5 grid with a 6-icon dock for tablets,
+  applied once per install and keeping existing layouts; the home screen follows system rotation;
+  no Perfetto or overdraw setprop was used. Still open: R2c, R4b, R4c, R5a, V5-V7.
 - **Prompt this answers:** `docs/prompts/smooth-and-beautiful-tablet.md`, steps 1–4.
 
 How to read the status labels:

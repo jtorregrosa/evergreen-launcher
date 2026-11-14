@@ -15,6 +15,7 @@ export ADB_BIN=/path/to/adb                  # optional, defaults to `adb`
 | `scenario.sh <label> <outdir> [scenario ...]` | Frame stats for the other everyday interactions: returning home (`home_back`, `home_intent`), opening an app (`open_home`, `open_drawer`), `drawer_toggle`, `drawer_fling`, `folder`, the long-press menus (`menu_home`, `menu_icon`), `widgets` and 30 s of `idle` home screen. Prints one `interact.sh`-style line per scenario plus a stage breakdown of the slow frames, and keeps the raw dumps in `<outdir>`. `VERBOSE=1` also lists the worst frames. |
 | `framestats.py [-v] <label> <scenario> <dump>...` | Summarizes `dumpsys gfxinfo <pkg> framestats` dumps: percentiles from the per-frame rows and, for frames longer than 16.7 ms, the average time per stage (main thread wait, input, animation, layout, draw, sync, GPU, swap) and which stage dominates. Used by `scenario.sh`. |
 | `uifind.py <label>` | Finds a view by text in a `uiautomator dump` and prints its centre. Optional helper for `scenario.sh`. |
+| `ab.sh <outdir> <rounds> <apkA> <apkB> <command...>` | Interleaved A/B: installs A and B in turn (compiled with `speed`), runs the command with `@LABEL@` replaced by `A1`, `B1`, `A2`, … and appends the output to `<outdir>/ab.txt`. Copy the scripts outside the checkout before a long run, so switching branches doesn't change them mid-run. |
 | `smoke.sh <outdir>` | Functional smoke test: home, drawer, search, long-press menu, folder, app launch, settings. Saves screenshots, prints the focus per step and any crashes. |
 | `bgcheck.sh <label>` | Puts Evergreen behind system Settings and reports how many of its AppWidgetHosts are still listening. |
 | `summ.py <csv>` | Summarizes the output of the scripts above: cold-start medians and jank averages per label. |
@@ -24,9 +25,11 @@ export ADB_BIN=/path/to/adb                  # optional, defaults to `adb`
 - **Coordinates:** taps and swipes are hard-coded for a 1200×1920 portrait tablet with the default
   Evergreen layout. Adjust them for other screens. `scenario.sh` takes its tap targets from
   environment variables (`HOME_APP_XY`, `DRAWER_APP_XY`, `FOLDER_XY`, `WIDGETS_XY`, `EMPTY_XY`).
-- **`uiautomator dump`:** on Android 10 it crashes while Evergreen holds widget ids without a
-  provider (`dumpsys appwidget` shows them under host 1028), so finding views by label does not
-  work there yet.
+- **Coordinates after #18:** the defaults fit the tablet layout (6x5 grid). Builds before #18 used
+  the two-panel layout: folder `85 1390`, home app `1113 1390`, drawer app `996 265`.
+- **Play Protect:** installing a new APK over adb can stop at a "send app for scanning" dialog
+  that waits for a tap, which stalls `ab.sh`. Watch the device during the first install of each
+  APK.
 - **Stages:** in `framestats.py` output, `wait` is main-thread work before the frame started
   (click handlers, lifecycle callbacks, posted runnables), `layout` and `draw` are the main
   thread inside the frame, and `syncq`, `sync`, `gpu` and `swap` are the RenderThread and the
