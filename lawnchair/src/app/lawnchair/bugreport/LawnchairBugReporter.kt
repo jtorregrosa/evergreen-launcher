@@ -13,6 +13,7 @@ import com.android.launcher3.R
 import java.io.File
 import java.text.SimpleDateFormat
 import java.util.Date
+import com.android.launcher3.util.Executors
 
 class LawnchairBugReporter(private val context: Context) {
 
@@ -21,6 +22,23 @@ class LawnchairBugReporter(private val context: Context) {
     private val appName by lazy { context.getString(R.string.derived_app_name) }
 
     init {
+        val defaultHandler = Thread.getDefaultUncaughtExceptionHandler()
+        Thread.setDefaultUncaughtExceptionHandler { thread, throwable ->
+            sendNotification(throwable)
+            defaultHandler?.uncaughtException(thread, throwable)
+        }
+
+        // Evergreen: channel creation, activeNotifications and log cleanup are IPC + disk IO that
+        // used to run on the main thread before Application.onCreate. Do them in the background.
+        Executors.UI_HELPER_EXECUTOR.execute {
+            runCatching {
+                createChannels()
+                removeDismissedLogs()
+            }
+        }
+    }
+
+    private fun createChannels() {
         notificationManager.createNotificationChannel(
             NotificationChannel(
                 BugReportReceiver.NOTIFICATION_CHANNEL_ID,
@@ -35,14 +53,6 @@ class LawnchairBugReporter(private val context: Context) {
                 NotificationManager.IMPORTANCE_NONE,
             ),
         )
-
-        val defaultHandler = Thread.getDefaultUncaughtExceptionHandler()
-        Thread.setDefaultUncaughtExceptionHandler { thread, throwable ->
-            sendNotification(throwable)
-            defaultHandler?.uncaughtException(thread, throwable)
-        }
-
-        removeDismissedLogs()
     }
 
     private fun removeDismissedLogs() {
@@ -63,6 +73,8 @@ class LawnchairBugReporter(private val context: Context) {
         if (hasNotification || notifications.size > 3) {
             return
         }
+        // Channels are created asynchronously; make sure they exist before posting.
+        createChannels()
         BugReportReceiver.notify(context, bugReport)
     }
 

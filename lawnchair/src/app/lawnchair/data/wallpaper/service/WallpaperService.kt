@@ -14,6 +14,7 @@ import java.io.File
 import java.io.FileOutputStream
 import java.security.MessageDigest
 import kotlinx.coroutines.runBlocking
+import com.android.launcher3.util.Executors
 
 class WallpaperService(val context: Context) : SafeCloseable {
 
@@ -97,7 +98,18 @@ class WallpaperService(val context: Context) : SafeCloseable {
 
     fun getTopWallpapers(): List<Wallpaper> = runBlocking {
         val wallpapers = dao.getTopWallpapers()
-        wallpapers.ifEmpty { emptyList() }
+        wallpapers.ifEmpty { emptyList() }.also { hasTopWallpapersCache = it.isNotEmpty() }
+    }
+
+    // Evergreen: the home long-press popup only needs to know whether any saved wallpapers exist.
+    // It used to run a blocking Room query on the main thread on every long-press.
+    @Volatile private var hasTopWallpapersCache: Boolean? = null
+
+    /** Cached "are there saved wallpapers?" answer; refreshes in the background after each call. */
+    fun hasTopWallpapers(): Boolean {
+        val cached = hasTopWallpapersCache
+        Executors.UI_HELPER_EXECUTOR.execute { getTopWallpapers() }
+        return cached ?: getTopWallpapers().isNotEmpty()
     }
 
     private fun deleteWallpaperFile(imagePath: String) {

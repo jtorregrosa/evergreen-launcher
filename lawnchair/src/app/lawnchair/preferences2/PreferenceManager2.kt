@@ -67,6 +67,10 @@ import com.patrykmichalik.opto.core.setBlocking
 import com.patrykmichalik.opto.domain.Preference
 import java.util.concurrent.ConcurrentHashMap
 import kotlinx.coroutines.MainScope
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -830,6 +834,19 @@ class PreferenceManager2 private constructor(private val context: Context) :
 
         @JvmStatic
         fun getInstance(context: Context) = INSTANCE.get(context)!!
+
+        /**
+         * Evergreen: start the first (cold) DataStore read on a background thread at process start,
+         * so PreferenceManager2's construction on the main thread finds the data already loaded
+         * (or in flight) instead of doing the disk read + parse + migration itself.
+         */
+        @JvmStatic
+        fun prewarm(context: Context) {
+            val appContext = context.applicationContext
+            CoroutineScope(Dispatchers.IO).launch {
+                runCatching { appContext.preferencesDataStore.data.first() }
+            }
+        }
 
         private const val TAG = "PreferenceManager2"
     }
