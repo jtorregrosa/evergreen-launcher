@@ -35,19 +35,23 @@ class SmartspaceWidgetReader(context: Context) :
     override val isAvailable: Boolean
 
     override val disabledTargets = listOf(dummyTarget)
-    private val widget: HeadlessWidgetsManager.Widget?
-    override val internalTargets: Flow<List<SmartspaceTarget>>
+    private val provider = AppWidgetManager.getInstance(context)
+        .getInstalledProvidersForPackage(GSA_PACKAGE, null)
+        .firstOrNull { it.provider.className == WIDGET_CLASS_NAME }
+
+    // Evergreen: the headless widget (an AppWidgetHost slot and a bound id) is only created once
+    // the data source is enabled and collected, not whenever the provider is constructed.
+    private val widget: HeadlessWidgetsManager.Widget? by lazy {
+        provider?.let {
+            HeadlessWidgetsManager.INSTANCE.get(context).getWidget(it, "smartspaceWidgetId")
+        }
+    }
+    override val internalTargets: Flow<List<SmartspaceTarget>> by lazy {
+        widget?.updates?.map(this::extractWidgetLayout) ?: flowOf(disabledTargets)
+    }
 
     init {
-        val appWidgetManager = AppWidgetManager.getInstance(context)
-        val provider = appWidgetManager.getInstalledProvidersForPackage(GSA_PACKAGE, null)
-            .firstOrNull { it.provider.className == WIDGET_CLASS_NAME }
         isAvailable = provider != null
-        widget = provider?.let {
-            val widgetsManager = HeadlessWidgetsManager.INSTANCE.get(context)
-            widgetsManager.getWidget(provider, "smartspaceWidgetId")
-        }
-        internalTargets = widget?.updates?.map(this::extractWidgetLayout) ?: flowOf(disabledTargets)
     }
 
     override suspend fun requiresSetup() = widget?.isBound == false

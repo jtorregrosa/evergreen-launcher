@@ -4,8 +4,10 @@ import android.content.ComponentName
 import android.content.Context
 import android.content.pm.PackageManager
 import android.content.pm.ShortcutInfo
+import android.graphics.drawable.Icon
 import android.os.UserHandle
 import android.util.AttributeSet
+import android.util.LruCache
 import android.view.View
 import android.view.ViewGroup
 import androidx.core.view.isInvisible
@@ -17,6 +19,7 @@ import com.android.launcher3.BubbleTextView
 import com.android.launcher3.LauncherAppState
 import com.android.launcher3.LauncherSettings
 import com.android.launcher3.R
+import com.android.launcher3.Utilities
 import com.android.launcher3.icons.BaseIconFactory
 import com.android.launcher3.icons.BitmapInfo
 import com.android.launcher3.icons.IconProvider
@@ -149,11 +152,33 @@ class SearchResultIcon(context: Context, attrs: AttributeSet?) :
         }
         notifyApplied(info)
         if (bindIcon) {
+            // Evergreen: resource icons (web, history, settings rows) are the same for every
+            // keystroke; reuse the rendered bitmap instead of rebuilding it on the model thread.
+            val cacheKey = iconCacheKey(target, info)
+            val cached = cacheKey?.let { synchronized(iconCache) { iconCache.get(it) } }
+            if (cached != null) {
+                info.bitmap = cached
+                applyFromItemInfoWithIcon(info)
+                return
+            }
+            val requestId = boundId
             Executors.MODEL_EXECUTOR.handler.postAtFrontOfQueue {
                 populateSearchActionItemInfo(target, info)
-                runOnMainThread { applyFromItemInfoWithIcon(info) }
+                if (cacheKey != null) synchronized(iconCache) { iconCache.put(cacheKey, info.bitmap) }
+                // Skip if the view was rebound to another result in the meantime.
+                runOnMainThread { if (boundId == requestId) applyFromItemInfoWithIcon(info) }
             }
         }
+    }
+
+    private fun iconCacheKey(target: SearchTargetCompat, info: SearchActionItemInfo): String? {
+        val icon = target.searchAction?.icon ?: return null
+        if (!Utilities.ATLEAST_P || icon.type != Icon.TYPE_RESOURCE) return null
+        if (info.hasFlags(SearchActionItemInfo.FLAG_PRIMARY_ICON_FROM_TITLE)) return null
+        // Icon.toString() includes the resource and the tint.
+        val badge = info.hasFlags(SearchActionItemInfo.FLAG_BADGE_WITH_PACKAGE) to
+            info.hasFlags(SearchActionItemInfo.FLAG_BADGE_WITH_COMPONENT_NAME)
+        return "${context.resources.configuration.uiMode}|${target.packageName}|${target.userHandle}|$badge|${target.extras.getString("class")}|$icon"
     }
 
     private fun bindIconComponentKey(iconComponentKey: ComponentKey) {
@@ -181,9 +206,10 @@ class SearchResultIcon(context: Context, attrs: AttributeSet?) :
         applyFromWorkspaceItem(si)
         notifyApplied(si)
         val cache = LauncherAppState.getInstance(launcher).iconCache
+        val requestId = boundId
         Executors.MODEL_EXECUTOR.handler.postAtFrontOfQueue {
             cache.getShortcutIcon(si, shortcutInfo)
-            runOnMainThread { applyFromWorkspaceItem(si) }
+            runOnMainThread { if (boundId == requestId) applyFromWorkspaceItem(si) }
         }
     }
 
@@ -248,4 +274,8 @@ class SearchResultIcon(context: Context, attrs: AttributeSet?) :
     }
 
     fun hasFlag(flag: Int) = hasFlag(flags, flag)
+
+    companion object {
+        private val iconCache = LruCache<String, BitmapInfo>(32)
+    }
 }

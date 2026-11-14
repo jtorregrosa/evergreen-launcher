@@ -139,10 +139,24 @@ atrace; `debug.hwui.overdraw` set only during the capture and cleared afterwards
   `flush commands`, the GL driver issuing the frame's draw calls. That is driver CPU time on the
   A53 cores rather than layout or uploads, and it is what the "GPU" stage in `framestats.py`
   measures.
-- Overdraw: the empty home screen has none (only the status bar gradient adds a layer). The
-  drawer sheet is drawn twice per pixel and the header three times; the second full-sheet layer
-  was not identified (the sheet is drawn once by `ScrimView`, and no drawer view sets a
-  background). Open item.
+- Overdraw: on this device a single draw already shows the blue tint. Hiding the workspace, the
+  app list and the fast scroller left the sheet blue; removing the sheet path turned the handle
+  from green to blue. So the drawer sheet is drawn once and there is no hidden second layer.
+
+## Remaining P2/P3 fixes (#25)
+
+EVG-15c, EVG-3c, EVG-18, EVG-15g, EVG-5d, EVG-10c and EVG-10d are mostly leaks, wasted background
+work and modes that are not the default here, so the check was for regressions. Three interleaved
+rounds (`ab.sh`, baseline `f8a4c47` against the fixes), the tablet was in its slow GPU state:
+
+| Scenario | Baseline janky (avg) | Fixes janky (avg) |
+|---|---|---|
+| drawer open / scroll / close | 10.1% | 10.3% |
+| drawer search (typing) | 15.4% (431 frames) | 15.2% (405 frames) |
+| home long-press menu | 63.7% | 54.0% |
+| page swipes | 0.2% | 0.2% |
+
+No regression; `smoke.sh` clean. The release APK drops from 16.97 to 16.04 MB (no x86 libraries).
 
 ## Experiments that were not merged
 
