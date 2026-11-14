@@ -28,10 +28,11 @@
         android:layout_weight="1.0"
         android:orientation="horizontal"
         android:paddingStart="@dimen/dynamic_grid_edge_margin"
-        android:paddingTop="@dimen/dynamic_grid_edge_margin"
         android:paddingEnd="@dimen/dynamic_grid_edge_margin"
-        android:paddingBottom="@dimen/dynamic_grid_edge_margin"
         android:singleLine="true">
+        <!-- Evergreen: no vertical padding. The block is already centered vertically, and on
+             sw720dp dynamic_grid_edge_margin is 27.59dp, so top+bottom padding (55dp) plus the
+             title exceeded the 56dp row and clipped the text of web suggestion rows on tablets. -->
 
         <TextView
             android:id="@+id/title"
