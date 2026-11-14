@@ -25,9 +25,10 @@ launched explicitly, with the screen on and unlocked.
 |---|---|---|---|
 | Base (`20a7ccd`, instrumentation only) | 2287 ms (2165–2606) | 1700 ms (1649–2168) | 14 |
 | PR #1: icon cache, Room, popup write (`acbb5fd`) | 1872 ms (1819–1922) | 1421 ms (1396–1436) | 0 |
-| PR #2: hot-path prefs, search, NPE, profile install (`2686e34`) | **1687 ms** (1672–1703) | **1347 ms** (1324–1365) | 0 |
+| PR #2: hot-path prefs, search, NPE, profile install (`2686e34`) | 1687 ms (1672–1703) | 1347 ms (1324–1365) | 0 |
+| PR #3: background work, leaks, startup/search IPC (`d19993b`) | **1669 ms** (1634–1690) | **1328 ms** (1304–1362) | 0 |
 
-Total so far: **−26%** without AOT and **−21%** with full AOT.
+Total so far: **−27%** without AOT and **−22%** with full AOT.
 
 ## Interaction (janky frames %, frame-time percentiles)
 
@@ -35,6 +36,14 @@ Total so far: **−26%** without AOT and **−21%** with full AOT.
 |---|---|---|---|
 | PR #1 | 0.0% / 9 / 12 ms | 22.1% / 23 / 36 ms | 29.6% / 33 / 61 ms |
 | PR #2 | 0.1% / 8 / 12 ms | **16.8%** / 20 / 37 ms | **27.1%** / 26 / **46 ms** |
+| PR #3 (3 rounds) | 0.05% / 9 / 12 ms | 20.2% / 21 / 34 ms | 31.8% / 28 / 47 ms |
+
+Run-to-run noise in the drawer and search columns is about ±5 percentage points, so PR #3 is
+neutral for interaction, as expected. Its target is background work:
+
+| Background check (Evergreen behind system Settings) | PR #2 | PR #3 |
+|---|---|---|
+| Evergreen AppWidgetHosts still listening (`dumpsys appwidget`) | 3 | **0** |
 
 Page swipes were already smooth. Most of the remaining drawer jank is the open/close transition on
 the tablet layout (EVG-8). The remaining search jank is the IME and padding animation (EVG-10f).
