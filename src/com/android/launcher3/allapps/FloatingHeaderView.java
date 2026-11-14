@@ -384,7 +384,8 @@ public class FloatingHeaderView extends LinearLayout implements
         }
         mHeaderCollapsed = false;
         mSnappedScrolledY = -mMaxTranslation;
-        if (!PreferenceExtensionsKt.firstBlocking (pref2.getRememberPosition ())) {
+        // Evergreen: cached value, see ActivityAllAppsContainerView.reset().
+        if (!pref2.cachedValue(pref2.getRememberPosition())) {
             mCurrentRV.scrollToTop();
         }
     }

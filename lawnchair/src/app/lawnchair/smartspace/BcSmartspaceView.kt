@@ -123,6 +123,10 @@ class BcSmartspaceView @JvmOverloads constructor(
 
         val sortedTargets = targets.sortedByDescending { it.score }.toMutableList()
         val isRtl = layoutDirection == LAYOUT_DIRECTION_RTL
+        // Evergreen: the provider replays and restarts on every return home and re-emits on
+        // battery and notification events. An identical list only caused a rebind and a
+        // layout pass that reached the workspace, in the middle of the return-home transition.
+        if (adapter.hasTargets(if (isRtl) sortedTargets.asReversed() else sortedTargets)) return
         val currentItem = viewPager.currentItem
         val index = if (isRtl) adapter.count - currentItem else currentItem
         if (isRtl) {
@@ -137,7 +141,6 @@ class BcSmartspaceView @JvmOverloads constructor(
         }
         indicator.setNumPages(targets.size)
         oldCard?.let { animateSmartspaceUpdate(it) }
-        adapter.notifyDataSetChanged()
     }
 
     private fun animateSmartspaceUpdate(oldCard: BcSmartspaceCard) {

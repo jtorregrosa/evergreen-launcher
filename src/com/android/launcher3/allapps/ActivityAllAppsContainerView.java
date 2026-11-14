@@ -503,7 +503,9 @@ public class ActivityAllAppsContainerView<T extends Context & ActivityContext>
      *                   apps list.
      */
     public void reset(boolean animate, boolean exitSearch) {
-        if (!PreferenceExtensionsKt.firstBlocking(pref2.getRememberPosition())) {
+        // Evergreen: cached value; reset() runs at the end of every drawer close and on every
+        // return home.
+        if (!pref2.cachedValue(pref2.getRememberPosition())) {
             for (int i = 0; i < mAH.size(); i++) {
                 if (mAH.get(i).mRecyclerView != null) {
                     mAH.get(i).mRecyclerView.scrollToTop();
