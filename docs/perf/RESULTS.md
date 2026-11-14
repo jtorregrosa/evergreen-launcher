@@ -38,6 +38,8 @@ Total so far: **−27%** without AOT and **−22%** with full AOT.
 | PR #2 | 0.1% / 8 / 12 ms | **16.8%** / 20 / 37 ms | **27.1%** / 26 / **46 ms** |
 | PR #3 (3 rounds) | 0.05% / 9 / 12 ms | 20.2% / 21 / 34 ms | 31.8% / 28 / 47 ms |
 | PR #4: no workspace under the drawer sheet below API 31 (3 rounds) | 0.1% / 9 / 12 ms | **9.6%** / 20 / 37 ms | **22.1%** / 26 / 48 ms |
+| Main after PR #6 (3 rounds, interleaved with the next row) | 0.3% / 8 / 11 ms | 9.5% / 21 / 39 ms | 18.8% / 25 / 48 ms |
+| PR #7: no animated search bar padding below API 31 (3 rounds, interleaved) | 0.3% / 8 / 11 ms | 8.5% / 20 / 34 ms | **15.2%** / 26 / 49 ms |
 
 Run-to-run noise in the drawer and search columns is about ±5 percentage points, so PR #3 is
 neutral for interaction, as expected. Its target is background work:
@@ -48,6 +50,17 @@ neutral for interaction, as expected. Its target is background work:
 
 Page swipes were already smooth. Most of the remaining drawer jank is the open/close transition on
 the tablet layout (EVG-8). The remaining search jank is the IME and padding animation (EVG-10f).
+
+## Summary since the base
+
+| Metric | Base | Now | Change |
+|---|---|---|---|
+| Cold start, `verify` | 2287 ms | ~1700 ms | **−26%** |
+| Cold start, `speed` | 1700 ms | ~1330 ms | **−22%** |
+| Icons re-rendered per cold start | 14 | 0 | |
+| Drawer open/scroll/close, janky frames | 22.1% (PR #1) | 8.5% | **−62%** |
+| Drawer search typing, janky frames | 29.6% (PR #1) | 15.2% | **−49%** |
+| Evergreen widget hosts listening in background | 3 | 0 | |
 
 ## Experiments that were not merged
 
