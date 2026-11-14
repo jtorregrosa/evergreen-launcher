@@ -2,11 +2,10 @@
 
 # Optimization options.
 -allowaccessmodification
--dontoptimize
+# Evergreen: -dontoptimize removed so R8 can inline, merge classes and strip Kotlin null checks.
 -dontpreverify
 -dontusemixedcaseclassnames
 -dontskipnonpubliclibraryclasses
--verbose
 -keepattributes InnerClasses, *Annotation*, Signature, SourceFile, LineNumberTable
 
 
