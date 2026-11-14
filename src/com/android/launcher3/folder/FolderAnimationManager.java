@@ -188,7 +188,9 @@ public class FolderAnimationManager {
         int initialColor = ColorUtils.setAlphaComponent(previewColor, LawnchairUtilsKt.getFolderPreviewAlpha(mContext));
         int finalColor = ColorTokens.FolderBackgroundColor.resolveColor(mContext);
 
-        ColorOption colorOption = PreferenceExtensionsKt.firstBlocking(mFolder.preferenceManager2.getFolderColor());
+        // Evergreen: cached value; this runs on every folder open and close.
+        ColorOption colorOption = mFolder.preferenceManager2.cachedValue(
+                mFolder.preferenceManager2.getFolderColor());
         int folderColor = colorOption.getColorPreferenceEntry().getLightColor().invoke(mContext);
 
         if (folderColor != 0) {
@@ -221,7 +223,10 @@ public class FolderAnimationManager {
             }
             ObjectAnimator anim = titleText.createTextAlphaAnimator(mIsOpening);
             anim.addListener(colorResetListener);
-            play(a, anim);
+            // Evergreen: fade the labels in during the second half of the open (out during the
+            // first half of the close). Labels at alpha 0 aren't drawn, so the scaling half of
+            // the animation doesn't re-record and re-rasterize every label on every frame.
+            play(a, anim, mIsOpening ? mDuration / 2 : 0, mDuration / 2);
         }
 
         mBgColorAnimator = getAnimator(mFolderBackground, "color", initialColor, finalColor);
