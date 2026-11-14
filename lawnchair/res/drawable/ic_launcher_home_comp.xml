@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Evergreen icon composite used in the About screen. -->
+<layer-list xmlns:android="http://schemas.android.com/apk/res/android">
+    <item android:drawable="@drawable/ic_evergreen_background" />
+    <item android:drawable="@drawable/ic_evergreen_foreground" />
+</layer-list>

@@ -181,7 +181,7 @@ class AboutViewModel(
             Link(
                 iconResId = R.drawable.ic_github,
                 labelResId = R.string.github,
-                url = "https://github.com/LawnchairLauncher/lawnchair",
+                url = "https://github.com/jtorregrosa/evergreen-launcher",
             ),
             Link(
                 iconResId = R.drawable.ic_translate,

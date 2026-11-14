@@ -173,7 +173,7 @@ android {
     applicationVariants.configureEach { variant ->
         variant.outputs.configureEach {
             def channel = variant.productFlavors.last().name
-            outputFileName = "Lawnchair.${variant.versionName}.$channel.${variant.buildType.name}.apk"
+            outputFileName = "Evergreen.${variant.versionName}.$channel.${variant.buildType.name}.apk"
         }
     }
 
@@ -244,11 +244,11 @@ android {
 
         debug {
             applicationIdSuffix ".debug"
-            resValue("string", "derived_app_name", "Lawnchair (Debug)")
+            resValue("string", "derived_app_name", "Evergreen (Debug)")
         }
 
         release {
-            resValue("string", "derived_app_name", "Lawnchair")
+            resValue("string", "derived_app_name", "Evergreen")
             minifyEnabled true
             shrinkResources true
             proguardFiles proguardFilesFromAosp + "proguard.pro"
@@ -278,19 +278,19 @@ android {
         }
 
         github {
-            applicationId 'app.lawnchair'
+            applicationId 'io.github.jtorregrosa.evergreen'
             dimension "channel"
+            isDefault true
         }
 
         nightly {
-            applicationId 'app.lawnchair.nightly'
+            applicationId 'io.github.jtorregrosa.evergreen.nightly'
             dimension "channel"
         }
 
         play {
-            applicationId "app.lawnchair.play"
+            applicationId "io.github.jtorregrosa.evergreen.play"
             dimension "channel"
-            isDefault true
         }
 
         configureEach {

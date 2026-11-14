@@ -1,0 +1,92 @@
+{
+  "formatVersion" : "1.1",
+  "component" : {
+    "group" : "com.github.ChickenHook",
+    "module" : "RestrictionBypass",
+    "version" : "c59bd6a680",
+    "attributes" : {
+      "org.gradle.status" : "release"
+    }
+  },
+  "createdBy" : {
+    "gradle" : {
+      "version" : "8.10.2"
+    }
+  },
+  "variants" : [ {
+    "name" : "releaseVariantReleaseApiPublication",
+    "attributes" : {
+      "org.gradle.category" : "library",
+      "org.gradle.dependency.bundling" : "external",
+      "org.gradle.libraryelements" : "aar",
+      "org.gradle.usage" : "java-api"
+    },
+    "files" : [ {
+      "name" : "RestrictionBypass-c59bd6a680.aar",
+      "url" : "RestrictionBypass-c59bd6a680.aar",
+      "size" : 486575,
+      "sha512" : "6660f43e19cf20f23c2d0105c376505dc8cde5b322b77dd8c17159dbd338e161e529f8ff9a2ca6d4c3be3e116d21bebf8a0c21c5a964df6c48325c1d573e34a5",
+      "sha256" : "bdb022133efd7d669d8141611af0d29b1d00175fcc5fbcfa7d199af67d1e412e",
+      "sha1" : "cca1193ab093658e2c1361f26a3bbcfc79e7c035",
+      "md5" : "4f28d3f4301a0c5428f2ea7483cfa6b8"
+    } ]
+  }, {
+    "name" : "releaseVariantReleaseRuntimePublication",
+    "attributes" : {
+      "org.gradle.category" : "library",
+      "org.gradle.dependency.bundling" : "external",
+      "org.gradle.libraryelements" : "aar",
+      "org.gradle.usage" : "java-runtime"
+    },
+    "dependencies" : [ {
+      "group" : "androidx.appcompat",
+      "module" : "appcompat",
+      "version" : {
+        "requires" : "1.7.0"
+      }
+    } ],
+    "files" : [ {
+      "name" : "RestrictionBypass-c59bd6a680.aar",
+      "url" : "RestrictionBypass-c59bd6a680.aar",
+      "size" : 486575,
+      "sha512" : "6660f43e19cf20f23c2d0105c376505dc8cde5b322b77dd8c17159dbd338e161e529f8ff9a2ca6d4c3be3e116d21bebf8a0c21c5a964df6c48325c1d573e34a5",
+      "sha256" : "bdb022133efd7d669d8141611af0d29b1d00175fcc5fbcfa7d199af67d1e412e",
+      "sha1" : "cca1193ab093658e2c1361f26a3bbcfc79e7c035",
+      "md5" : "4f28d3f4301a0c5428f2ea7483cfa6b8"
+    } ]
+  }, {
+    "name" : "releaseVariantReleaseSourcePublication",
+    "attributes" : {
+      "org.gradle.category" : "documentation",
+      "org.gradle.dependency.bundling" : "external",
+      "org.gradle.docstype" : "sources",
+      "org.gradle.usage" : "java-runtime"
+    },
+    "files" : [ {
+      "name" : "RestrictionBypass-c59bd6a680.jar",
+      "url" : "RestrictionBypass-c59bd6a680.jar",
+      "size" : 4170,
+      "sha512" : "fd0e1ee39ca90f9340c0036e3d4a2b5eae584219ef3aa711220c4ee809fcaa0eadea3e9f8ab5abeebe063a89b3a72a9c39daf1741a4c5727bf87e2848e47c4f9",
+      "sha256" : "2835b7c19b49836aafcee6d3e5f7ecdea0ca8b5d3f96ff9448b7164d38fb729a",
+      "sha1" : "5c4dd361f23deab695b346ddc3d6dd6a40f77327",
+      "md5" : "2afc0f1ef3b3e74ce087480931f2ab0d"
+    } ]
+  }, {
+    "name" : "releaseVariantReleaseJavaDocPublication",
+    "attributes" : {
+      "org.gradle.category" : "documentation",
+      "org.gradle.dependency.bundling" : "external",
+      "org.gradle.docstype" : "javadoc",
+      "org.gradle.usage" : "java-runtime"
+    },
+    "files" : [ {
+      "name" : "RestrictionBypass-c59bd6a680.jar",
+      "url" : "RestrictionBypass-c59bd6a680.jar",
+      "size" : 291408,
+      "sha512" : "f6d9da404035d765698799206267781d846834c5b9fbc2126c19055819fad679ce6715a5108331245231688118d5c1a950cb54205fef650dfde3a5b01bf51c75",
+      "sha256" : "2e63f6bf150e4bebfdde35b3f4a7e270b045178826af6fc1dd49f99b27b40f2e",
+      "sha1" : "802bfc8704b68090947260993085e8c87169c70c",
+      "md5" : "e3eee01aa1c4e3fc2334abdbb051c54d"
+    } ]
+  } ]
+}

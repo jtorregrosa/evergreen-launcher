@@ -1,3 +1,19 @@
+# Evergreen Launcher
+
+Evergreen is a performance-focused fork of [Lawnchair](https://github.com/LawnchairLauncher/lawnchair) 15
+(tag `v15.0.0-beta3.0`), kept alive for older devices such as Android 10 (API 29) tablets that
+Lawnchair 16 no longer supports. It is not affiliated with or endorsed by the Lawnchair team.
+
+Changes from upstream: app name, icon and package (`io.github.jtorregrosa.evergreen`), source and
+update links pointing to this fork, remote "live information" from lawnchair.app disabled by default,
+JitPack dependencies vendored in `third_party/m2`, plus the performance work tracked on the
+`perf/android10` branch (see `PERF_ANDROID10.md`). Licensed under the Apache License 2.0, like upstream;
+the original copyright notices are preserved.
+
+The original Lawnchair README follows.
+
+---
+
 # Lawnchair 15
 
 [![Build debug APK](https://github.com/LawnchairLauncher/lawnchair/actions/workflows/ci.yml/badge.svg)](https://github.com/LawnchairLauncher/lawnchair/actions/workflows/ci.yml)

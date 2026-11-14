@@ -39,7 +39,19 @@ dependencyResolutionManagement {
             }
         }
         mavenCentral()
-        maven { url 'https://jitpack.io' }
+        // Evergreen: JitPack builds artifacts on demand and is not reliable long term, so the
+        // com.github.* dependencies are vendored in third_party/m2 and resolved only from there.
+        exclusiveContent {
+            forRepository {
+                maven {
+                    name = "vendoredJitpack"
+                    url = file("third_party/m2").toURI()
+                }
+            }
+            filter {
+                includeGroupByRegex("com\\.github\\..*")
+            }
+        }
     }
 }
 

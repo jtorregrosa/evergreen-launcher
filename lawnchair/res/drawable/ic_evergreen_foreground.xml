@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Evergreen launcher icon: a stylised fir tree inside the 66dp safe zone. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <!-- trunk -->
+    <path
+        android:fillColor="#8FD4A8"
+        android:pathData="M50.5,68h7v9.5a1.5,1.5 0,0 1,-1.5 1.5h-4a1.5,1.5 0,0 1,-1.5 -1.5z" />
+    <!-- lower tier -->
+    <path
+        android:fillColor="#E8F5EC"
+        android:pathData="M54,44L73,68.5a1.6,1.6 0,0 1,-1.3 2.5H36.3a1.6,1.6 0,0 1,-1.3 -2.5z" />
+    <!-- middle tier -->
+    <path
+        android:fillColor="#E8F5EC"
+        android:pathData="M54,35.5L68,54a1.5,1.5 0,0 1,-1.2 2.4H41.2a1.5,1.5 0,0 1,-1.2 -2.4z" />
+    <!-- top tier -->
+    <path
+        android:fillColor="#E8F5EC"
+        android:pathData="M54,28L63,40.5a1.3,1.3 0,0 1,-1.1 2H46.1a1.3,1.3 0,0 1,-1.1 -2z" />
+</vector>

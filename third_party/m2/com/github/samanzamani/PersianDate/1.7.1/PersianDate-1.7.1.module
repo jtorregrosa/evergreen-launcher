@@ -1,0 +1,68 @@
+{
+  "formatVersion" : "1.1",
+  "createdBy" : {
+    "gradle" : {
+      "version" : "8.3"
+    }
+  },
+  "component" : {
+    "group" : "com.github.samanzamani",
+    "module" : "PersianDate",
+    "version" : "1.7.1",
+    "attributes" : {
+      "org.gradle.status" : "release"
+    }
+  },
+  "variants" : [ {
+    "name" : "releaseVariantReleaseApiPublication",
+    "attributes" : {
+      "org.gradle.category" : "library",
+      "org.gradle.dependency.bundling" : "external",
+      "org.gradle.libraryelements" : "aar",
+      "org.gradle.usage" : "java-api"
+    },
+    "files" : [ {
+      "name" : "PersianDate-1.7.1.aar",
+      "url" : "PersianDate-1.7.1.aar",
+      "size" : 19316,
+      "sha512" : "fd6e27234e263f17d96fa30cd34893cb27d38655e461aef53c5ef967e760d205ca399bb647e669ead3df732dc16f24b904a2cfedbb6783c8eb833eec0e3c5677",
+      "sha256" : "2d10f6d521fd6fceba6a55df28e25135c42bb4e429be5143dae50233f51821a6",
+      "sha1" : "85c85673fc6fec97c68733a3f14b3fb02e079446",
+      "md5" : "65a0e972a8cca447b5f3ccff976ec366"
+    } ]
+  }, {
+    "name" : "releaseVariantReleaseRuntimePublication",
+    "attributes" : {
+      "org.gradle.category" : "library",
+      "org.gradle.dependency.bundling" : "external",
+      "org.gradle.libraryelements" : "aar",
+      "org.gradle.usage" : "java-runtime"
+    },
+    "files" : [ {
+      "name" : "PersianDate-1.7.1.aar",
+      "url" : "PersianDate-1.7.1.aar",
+      "size" : 19316,
+      "sha512" : "fd6e27234e263f17d96fa30cd34893cb27d38655e461aef53c5ef967e760d205ca399bb647e669ead3df732dc16f24b904a2cfedbb6783c8eb833eec0e3c5677",
+      "sha256" : "2d10f6d521fd6fceba6a55df28e25135c42bb4e429be5143dae50233f51821a6",
+      "sha1" : "85c85673fc6fec97c68733a3f14b3fb02e079446",
+      "md5" : "65a0e972a8cca447b5f3ccff976ec366"
+    } ]
+  }, {
+    "name" : "releaseVariantReleaseSourcePublication",
+    "attributes" : {
+      "org.gradle.category" : "documentation",
+      "org.gradle.dependency.bundling" : "external",
+      "org.gradle.docstype" : "sources",
+      "org.gradle.usage" : "java-runtime"
+    },
+    "files" : [ {
+      "name" : "PersianDate-1.7.1.jar",
+      "url" : "PersianDate-1.7.1.jar",
+      "size" : 10604,
+      "sha512" : "7f25be0f554cdf737c69492cfd7a96377063e757dc595a2979a5a3d0a5113274cc9d515bcaa6be2b1b08bdaab7a771cd2b92132bd4b9fd0bd3602319230f8a62",
+      "sha256" : "0c6cf93d899ba89a711519c7d62d7aa9ceea16135f172163d061a03189558a76",
+      "sha1" : "a85da740f072f2ba8831100990ff5269c8bca91e",
+      "md5" : "bec62a578d9f4cbdad954bc812a0787c"
+    } ]
+  } ]
+}
