@@ -273,7 +273,7 @@ Still open, roughly in priority order:
 - EVG-1e, EVG-1f: only relevant with an icon pack or system icon overrides.
 - EVG-15b: `onTrimMemory`.
 - EVG-14: feed client when the feed is disabled. No bind was observed on the tablet.
-- EVG-1d / EVG-21 and the rest of the modest-device mode: visual changes, so they need a decision.
+- EVG-1d / EVG-21 (modest-device mode with lighter shadows): implemented and measured, no gain, so not merged. See RESULTS.md.
 - EVG-6b: systemic preference cache. `cachedValue()` exists; the remaining `firstBlocking()` calls are on cold paths.
 - EVG-8b/8c/8d: only with drawer folders or categories.
 - The P3 items.
