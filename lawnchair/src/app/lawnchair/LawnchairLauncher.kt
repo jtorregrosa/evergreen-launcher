@@ -509,6 +509,10 @@ class LawnchairLauncher : QuickstepLauncher() {
 
     override fun getDefaultOverlay(): LauncherOverlayManager = defaultOverlay
 
+    // Evergreen: without recents there is no transition manager to show a FloatingIconView, so
+    // don't preload a full-resolution icon on every app launch.
+    override fun supportsAdaptiveIconAnimation(clickedView: View?): Boolean = LawnchairApp.isRecentsEnabled
+
     fun recreateIfNotScheduled() {
         if (sRestartFlags == 0) {
             recreate()
