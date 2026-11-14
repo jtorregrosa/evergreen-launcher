@@ -15,6 +15,8 @@
 #   menu_home      long-press menu on empty home screen space
 #   menu_icon      long-press menu on a home screen icon
 #   widgets        open the widget picker from the home menu, scroll it, close it
+#   drawer_first   first drawer open and close after a cold start (REPS cold starts, max 4)
+#   folder_first   first folder open and close after a cold start (REPS cold starts, max 4)
 #   idle           30 s of untouched home screen (the frame count should stay near 0)
 #
 # Tap targets are "x y" coordinates. The defaults fit a 1200x1920 portrait tablet with the default
@@ -35,7 +37,7 @@ set -u
 LABEL=${1:?usage: scenario.sh <label> <outdir> [scenario ...]}
 OUT=${2:?usage: scenario.sh <label> <outdir> [scenario ...]}
 shift 2
-ALL="home_back home_intent open_home open_drawer drawer_toggle drawer_fling folder menu_home menu_icon widgets idle"
+ALL="home_back home_intent open_home open_drawer drawer_toggle drawer_fling folder menu_home menu_icon widgets drawer_first folder_first idle"
 SCENARIOS=${*:-$ALL}
 mkdir -p "$OUT"
 
@@ -255,6 +257,44 @@ widgets() {
     check_focus
   done
   report widgets
+}
+
+cold_start() {
+  $ADB shell am force-stop $PKG
+  sleep 1
+  $ADB shell am start -n $ACT >/dev/null 2>&1
+  sleep 10
+}
+
+drawer_first() {
+  local n=$((REPS < 4 ? REPS : 4))
+  for i in $(seq "$n"); do
+    cold_start
+    reset
+    swipe "$OPEN_DRAWER"
+    sleep 1.3
+    key KEYCODE_BACK
+    sleep 1.3
+    dump drawer_first "$i"
+    check_focus
+  done
+  report drawer_first
+}
+
+folder_first() {
+  local xy n=$((REPS < 4 ? REPS : 4))
+  xy=$(locate "$FOLDER_XY" "$FOLDER") || { skip folder_first "no '$FOLDER' folder on the home screen"; return; }
+  for i in $(seq "$n"); do
+    cold_start
+    reset
+    tap "$xy"
+    sleep 1.2
+    key KEYCODE_BACK
+    sleep 1.2
+    dump folder_first "$i"
+    check_focus
+  done
+  report folder_first
 }
 
 idle() {

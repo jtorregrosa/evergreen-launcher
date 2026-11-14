@@ -25,6 +25,7 @@ import android.graphics.Color
 import android.graphics.RectF
 import android.graphics.drawable.Drawable
 import android.os.Bundle
+import android.os.Looper
 import android.util.Pair
 import android.view.Display
 import android.view.View
@@ -63,6 +64,7 @@ import com.android.launcher3.LauncherAppState
 import com.android.launcher3.LauncherState
 import com.android.launcher3.R
 import com.android.launcher3.Utilities
+import com.android.launcher3.model.data.FolderInfo
 import com.android.launcher3.model.data.ItemInfo
 import com.android.launcher3.popup.SystemShortcut
 import com.android.launcher3.shortcuts.DeepShortcutView
@@ -490,6 +492,39 @@ class LawnchairLauncher : QuickstepLauncher() {
                 PROFILE_INSTALL_DELAY_MS,
             )
         }
+        window.decorView.postDelayed(::prewarmFolders, FOLDER_PREWARM_DELAY_MS)
+    }
+
+    /**
+     * Evergreen: the first open of each folder after a bind inflated a page of item views in
+     * the click handler (the view cache starts empty) and, for items beyond the preview, loaded
+     * high-resolution icons during the open animation, each followed by a 375 ms cross-fade.
+     * Do both while the launcher is idle after binding.
+     */
+    private fun prewarmFolders() {
+        val iconCache = LauncherAppState.getInstance(this).iconCache
+        workspace.mapOverItems { info, _ ->
+            if (info is FolderInfo) {
+                info.getAppContents()
+                    .filter { it.usingLowResIcon() }
+                    .forEach { iconCache.updateIconInBackground({ }, it) }
+            }
+            false
+        }
+
+        val target = deviceProfile.numFolderColumns * deviceProfile.numFolderRows
+        val views = ArrayList<View>(target)
+        Looper.myQueue().addIdleHandler {
+            // A few views per idle pass, so input and frames are never held up for long.
+            repeat(3) {
+                if (views.size < target) {
+                    views.add(viewCache.getView(R.layout.folder_application, this, null))
+                }
+            }
+            if (views.size < target) return@addIdleHandler true
+            views.forEach { viewCache.recycleView(R.layout.folder_application, it) }
+            false
+        }
     }
 
     // Evergreen: AppWidgetHost.startListening() is a blocking call that replays every
@@ -575,6 +610,7 @@ class LawnchairLauncher : QuickstepLauncher() {
         private const val ICON_PACK_STAMP_KEY = "evergreen_icon_pack_reload_stamp"
         private const val PROFILE_INSTALL_DELAY_MS = 5_000L
         private const val HEADLESS_LISTEN_DELAY_MS = 400L
+        private const val FOLDER_PREWARM_DELAY_MS = 1_500L
 
         val instance get() = LauncherAppState.getInstanceNoCreate()?.launcher as? LawnchairLauncher
     }
