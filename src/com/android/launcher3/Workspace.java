@@ -1476,7 +1476,8 @@ public class Workspace<T extends View & PageIndicator> extends PagedView<T>
     public void showPageIndicatorAtCurrentScroll() {
         if (mPageIndicator != null) {
             mPageIndicator.setScroll(getScrollX(), computeMaxScroll());
-            var isHotseatEnabled = PreferenceExtensionsKt.firstBlocking(mPreferenceManager2.isHotseatEnabled());
+            // Evergreen: runs on every scroll frame; avoid a blocking DataStore read.
+            var isHotseatEnabled = mPreferenceManager2.cachedValue(mPreferenceManager2.isHotseatEnabled());
             mPageIndicator.setVisibility(isHotseatEnabled ? VISIBLE : INVISIBLE);
         }
     }

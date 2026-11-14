@@ -490,7 +490,8 @@ public class BubbleTextView extends TextView implements ItemInfoUpdateReceiver,
      * be effective.
      */
     protected boolean shouldUseTwoLine() {
-        return (com.android.launcher3.config.FeatureFlags.twoLineAllApps(this.getContext()) && mDisplay == DISPLAY_ALL_APPS)
+        // Evergreen: check the cheap display type first; this runs in every onMeasure.
+        return (mDisplay == DISPLAY_ALL_APPS && com.android.launcher3.config.FeatureFlags.twoLineAllApps(this.getContext()))
                 || (com.android.launcher3.config.FeatureFlags.ENABLE_TWOLINE_DEVICESEARCH.get()
                         && mDisplay == DISPLAY_SEARCH_RESULT);
     }

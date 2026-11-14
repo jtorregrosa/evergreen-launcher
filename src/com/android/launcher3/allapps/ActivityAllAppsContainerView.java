@@ -804,7 +804,8 @@ public class ActivityAllAppsContainerView<T extends Context & ActivityContext>
     }
 
     protected void updateHeaderScroll(int scrolledOffset) {
-        if (PreferenceExtensionsKt.firstBlocking(pref2.getHideAppDrawerSearchBar()))
+        // Evergreen: runs on every scroll event; use non-blocking cached preference reads.
+        if (pref2.cachedValue(pref2.getHideAppDrawerSearchBar()))
             return;
         float prog1 = Utilities.boundToRange((float) scrolledOffset / mHeaderThreshold, 0f, 1f);
         int headerColor = getHeaderColor(prog1);
@@ -831,8 +832,7 @@ public class ActivityAllAppsContainerView<T extends Context & ActivityContext>
     }
 
     protected int getHeaderColor(float blendRatio) {
-        var showHeaderBackground = PreferenceExtensionsKt.firstBlocking(
-            pref2.getAppDrawerSearchBarBackground());
+        var showHeaderBackground = pref2.cachedValue(pref2.getAppDrawerSearchBarBackground());
         
         var opacity = 0.0f;
         
@@ -840,7 +840,7 @@ public class ActivityAllAppsContainerView<T extends Context & ActivityContext>
             opacity = pref.getDrawerOpacity().get();
         }
         
-        var colorOptions = PreferenceExtensionsKt.firstBlocking(pref2.getAppDrawerBackgroundColor());
+        var colorOptions = pref2.cachedValue(pref2.getAppDrawerBackgroundColor());
         var color = colorOptions.getColorPreferenceEntry().getLightColor().invoke(mContext);
         if (color != 0) {
             mScrimColor = color;

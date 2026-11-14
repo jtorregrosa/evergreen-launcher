@@ -25,7 +25,6 @@ import android.content.res.Resources;
 import androidx.annotation.VisibleForTesting;
 
 import com.android.launcher3.Utilities;
-import com.patrykmichalik.opto.core.PreferenceExtensionsKt;
 
 import com.android.launcher3.BuildConfig;
 import com.android.launcher3.Flags;
@@ -66,22 +65,22 @@ public final class FeatureFlags {
         @Deprecated
         public static boolean topQsbOnFirstScreenEnabled(Context context) {
                 PreferenceManager2 preferenceManager2 = PreferenceManager2.getInstance(context);
-                return PreferenceExtensionsKt.firstBlocking(preferenceManager2.getEnableSmartspace());
+                return preferenceManager2.cachedValue(preferenceManager2.getEnableSmartspace());
         }
 
         public static boolean showDotPagination(Context context) {
                 PreferenceManager2 preferenceManager2 = PreferenceManager2.getInstance(context);
-                return PreferenceExtensionsKt.firstBlocking(preferenceManager2.getEnableDotPagination());
+                return preferenceManager2.cachedValue(preferenceManager2.getEnableDotPagination());
         }
 
         public static boolean showMaterialUPopup(Context context) {
                 PreferenceManager2 preferenceManager2 = PreferenceManager2.getInstance(context);
-                return PreferenceExtensionsKt.firstBlocking(preferenceManager2.getEnableMaterialUPopUp());
+                return preferenceManager2.cachedValue(preferenceManager2.getEnableMaterialUPopUp());
         }
 
         public static boolean twoLineAllApps(Context context) {
                 PreferenceManager2 preferenceManager2 = PreferenceManager2.getInstance(context);
-                return PreferenceExtensionsKt.firstBlocking(preferenceManager2.getTwoLineAllApps());
+                return preferenceManager2.cachedValue(preferenceManager2.getTwoLineAllApps());
         }
 
         /**
