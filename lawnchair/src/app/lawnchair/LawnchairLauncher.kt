@@ -36,6 +36,7 @@ import androidx.core.content.pm.PackageInfoCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.WindowInsetsControllerCompat
 import androidx.lifecycle.lifecycleScope
+import androidx.profileinstaller.ProfileInstaller
 import app.lawnchair.LawnchairApp.Companion.showQuickstepWarningIfNecessary
 import app.lawnchair.compat.LawnchairQuickstepCompat
 import app.lawnchair.data.wallpaper.service.WallpaperService
@@ -478,6 +479,15 @@ class LawnchairLauncher : QuickstepLauncher() {
         if (!hasReportedFullyDrawn) {
             hasReportedFullyDrawn = true
             runCatching { reportFullyDrawn() }
+            // Evergreen: androidx.startup's InitializationProvider is removed from the manifest, so
+            // ProfileInstaller never ran and the packaged baseline profile never reached ART on
+            // sideloaded installs. Install it off the main thread once startup has settled; this is
+            // a no-op when the profile for this APK version is already installed.
+            val appContext = applicationContext
+            Executors.UI_HELPER_EXECUTOR.handler.postDelayed(
+                { runCatching { ProfileInstaller.writeProfile(appContext) } },
+                PROFILE_INSTALL_DELAY_MS,
+            )
         }
     }
 
@@ -540,6 +550,7 @@ class LawnchairLauncher : QuickstepLauncher() {
         var sRestartFlags = 0
 
         private const val ICON_PACK_STAMP_KEY = "evergreen_icon_pack_reload_stamp"
+        private const val PROFILE_INSTALL_DELAY_MS = 5_000L
 
         val instance get() = LauncherAppState.getInstanceNoCreate()?.launcher as? LawnchairLauncher
     }
