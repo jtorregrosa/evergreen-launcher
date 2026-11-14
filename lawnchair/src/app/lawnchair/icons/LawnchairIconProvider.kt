@@ -11,7 +11,6 @@ import android.content.Intent.ACTION_PACKAGE_CHANGED
 import android.content.Intent.ACTION_PACKAGE_REMOVED
 import android.content.Intent.ACTION_TIMEZONE_CHANGED
 import android.content.Intent.ACTION_TIME_CHANGED
-import android.content.Intent.ACTION_TIME_TICK
 import android.content.IntentFilter
 import android.content.pm.ActivityInfo
 import android.content.pm.LauncherActivityInfo
@@ -307,7 +306,8 @@ class LawnchairIconProvider @JvmOverloads constructor(
 
         init {
             val filter = IntentFilter(ACTION_TIMEZONE_CHANGED)
-            filter.addAction(ACTION_TIME_TICK)
+            // Evergreen: no ACTION_TIME_TICK. It triggered a model update per clock component every
+            // minute; ClockDrawableWrapper already animates clock icons on its own.
             filter.addAction(ACTION_TIME_CHANGED)
             filter.addAction(ACTION_DATE_CHANGED)
             context.registerReceiver(this, filter, null, handler)
@@ -315,7 +315,7 @@ class LawnchairIconProvider @JvmOverloads constructor(
 
         override fun onReceive(context: Context, intent: Intent) {
             when (intent.action) {
-                ACTION_TIMEZONE_CHANGED, ACTION_TIME_CHANGED, ACTION_TIME_TICK -> {
+                ACTION_TIMEZONE_CHANGED, ACTION_TIME_CHANGED -> {
                     context.getSystemService<UserManager>()?.userProfiles?.forEach { user ->
                         iconPack.getClocks().forEach { componentName ->
                             callback.onAppIconChanged(

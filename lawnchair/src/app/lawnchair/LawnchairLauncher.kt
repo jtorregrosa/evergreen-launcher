@@ -491,6 +491,16 @@ class LawnchairLauncher : QuickstepLauncher() {
         }
     }
 
+    override fun onStart() {
+        super.onStart()
+        HeadlessWidgetsManager.INSTANCE.getNoCreate()?.setListening(true)
+    }
+
+    override fun onStop() {
+        super.onStop()
+        HeadlessWidgetsManager.INSTANCE.getNoCreate()?.setListening(false)
+    }
+
     override fun onDestroy() {
         super.onDestroy()
         // Only actually closes if required, safe to call if not enabled

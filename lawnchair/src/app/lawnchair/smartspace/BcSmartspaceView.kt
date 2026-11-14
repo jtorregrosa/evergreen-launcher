@@ -5,12 +5,17 @@ import android.animation.AnimatorListenerAdapter
 import android.animation.AnimatorSet
 import android.animation.ObjectAnimator
 import android.content.Context
+import android.content.ContextWrapper
 import android.util.AttributeSet
 import android.view.View
 import android.view.View.MeasureSpec.EXACTLY
 import android.view.View.MeasureSpec.makeMeasureSpec
 import android.view.ViewGroup
 import android.widget.FrameLayout
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleOwner
+import androidx.lifecycle.findViewTreeLifecycleOwner
+import androidx.lifecycle.repeatOnLifecycle
 import androidx.viewpager.widget.ViewPager
 import app.lawnchair.smartspace.model.SmartspaceTarget
 import app.lawnchair.smartspace.provider.SmartspaceProvider
@@ -67,9 +72,19 @@ class BcSmartspaceView @JvmOverloads constructor(
         val targets = if (previewMode) provider.previewTargets else provider.targets
         repeatOnAttached {
             viewPager.adapter = adapter
-            targets
-                .onEach(::onSmartspaceTargetsUpdate)
-                .launchIn(this)
+            // Evergreen: views stay attached while the launcher is stopped, so the battery
+            // receiver, media session listeners and widget readers behind these targets kept
+            // running in the background. Collect only while the host lifecycle is STARTED.
+            val lifecycle = findLifecycleOwner()?.lifecycle
+            if (lifecycle != null) {
+                lifecycle.repeatOnLifecycle(Lifecycle.State.STARTED) {
+                    targets.collect(::onSmartspaceTargetsUpdate)
+                }
+            } else {
+                targets
+                    .onEach(::onSmartspaceTargetsUpdate)
+                    .launchIn(this)
+            }
         }
     }
 
@@ -163,4 +178,14 @@ class BcSmartspaceView @JvmOverloads constructor(
         runningAnimation = animator
         animator.start()
     }
+}
+
+private fun View.findLifecycleOwner(): LifecycleOwner? {
+    findViewTreeLifecycleOwner()?.let { return it }
+    var ctx: Context? = context
+    while (ctx is ContextWrapper) {
+        if (ctx is LifecycleOwner) return ctx
+        ctx = ctx.baseContext
+    }
+    return null
 }
