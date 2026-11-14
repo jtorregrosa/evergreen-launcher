@@ -430,8 +430,11 @@ public final class FeatureFlags {
         public static final BooleanFlag ENABLE_ALL_APPS_RV_PREINFLATION = getDebugFlag(288161355,
                         "ENABLE_ALL_APPS_RV_PREINFLATION", ENABLED,
                         "Enables preinflating all apps icons to avoid scrolling jank.");
+        // Evergreen: DISABLED. With GONE, the drawer list's first layout and a page of binds,
+        // plus the layout requested by every reset on close, ran inside the first frame of the
+        // next open (110 ms on a Helio P22T). INVISIBLE lets them run while the drawer is hidden.
         public static final BooleanFlag ALL_APPS_GONE_VISIBILITY = getDebugFlag(291651514,
-                        "ALL_APPS_GONE_VISIBILITY", ENABLED,
+                        "ALL_APPS_GONE_VISIBILITY", DISABLED,
                         "Set all apps container view's hidden visibility to GONE instead of INVISIBLE.");
 
         public static BooleanFlag getDebugFlag(
