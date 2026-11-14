@@ -174,10 +174,7 @@ public class DatabaseWidgetPreviewLoader {
         final int previewHeightF = previewHeight;
         final Drawable drawableF = drawable;
 
-        // Evergreen: below API 31, draw previews in software on this background thread. A
-        // hardware bitmap is rendered on the app's single RenderThread, which stalled the frames
-        // of the opening widget sheet on low-end GPUs.
-        BitmapRenderer renderer = c -> {
+        return BitmapRenderer.createHardwareBitmap(previewWidth, previewHeight, c -> {
             // Draw the scaled preview into the final bitmap
             if (widgetPreviewExists) {
                 drawableF.setBounds(0, 0, previewWidthF, previewHeightF);
@@ -238,10 +235,7 @@ public class DatabaseWidgetPreviewLoader {
                 } catch (Resources.NotFoundException e) {
                 }
             }
-        };
-        return Utilities.ATLEAST_S
-                ? BitmapRenderer.createHardwareBitmap(previewWidth, previewHeight, renderer)
-                : BitmapRenderer.createSoftwareBitmap(previewWidth, previewHeight, renderer);
+        });
     }
 
     private RectF drawBoxWithShadow(Canvas c, int width, int height) {
