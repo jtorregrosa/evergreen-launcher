@@ -239,10 +239,11 @@ android {
                     }
                 }
             }
-            pseudoLocalesEnabled true
         }
 
         debug {
+            // Evergreen: pseudo-locales (en-XA, ar-XB) only in debug; they bloat release resources.
+            pseudoLocalesEnabled true
             applicationIdSuffix ".debug"
             resValue("string", "derived_app_name", "Evergreen (Debug)")
         }
