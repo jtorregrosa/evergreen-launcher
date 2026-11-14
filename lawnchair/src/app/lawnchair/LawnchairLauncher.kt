@@ -404,6 +404,9 @@ class LawnchairLauncher : QuickstepLauncher() {
     }
 
     override fun getActivityLaunchOptions(v: View?, item: ItemInfo?): ActivityOptionsWrapper {
+        // Evergreen: without recents the transition manager is never created, so super threw (and
+        // we caught) a NullPointerException on every app launch. Skip straight to the fallback.
+        if (!LawnchairApp.isRecentsEnabled) return getActivityLaunchOptionsDefault(v)
         return runCatching {
             super.getActivityLaunchOptions(v, item)
         }.getOrElse {
