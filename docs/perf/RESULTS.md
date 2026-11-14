@@ -48,3 +48,9 @@ neutral for interaction, as expected. Its target is background work:
 
 Page swipes were already smooth. Most of the remaining drawer jank is the open/close transition on
 the tablet layout (EVG-8). The remaining search jank is the IME and padding animation (EVG-10f).
+
+## Experiments that were not merged
+
+| Change | Result | Decision |
+|---|---|---|
+| Remove `-dontoptimize` from `proguard.pro` (R8 full optimization) | APK 17.1 → 15.6 MB, PSS 112 → 107 MB. Cold start `verify` 1703 → 1722 ms (same), `speed` 1326 → 1371 ms (+3%, consistently slower). Drawer/search jank within noise. | Not merged: more risk (reflection in AOSP/SystemUI code) with no startup gain. |
