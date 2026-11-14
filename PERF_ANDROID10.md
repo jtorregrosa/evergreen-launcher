@@ -1,91 +1,91 @@
-# Lawnchair 15 beta3: rendimiento en tablet Android 10 (API 29)
+# Lawnchair 15 beta3: performance on an Android 10 (API 29) tablet
 
-Este es un análisis estático: hemos leído el código, pero todavía no hemos medido nada. Las rutas se dan respecto a la raíz del repositorio. Las marcas (?) indican cosas que hay que confirmar en el dispositivo.
+This is a static analysis: we have read the code, but we have not measured anything yet. Paths are given relative to the repository root. The (?) marks indicate things that need to be confirmed on the device.
 
-Escalas usadas:
-- **Impacto**: lo que se espera ganar en esa tablet.
-- **Riesgo**: probabilidad de regresiones o de que se note un cambio de comportamiento.
+Scales used:
+- **Impact**: what is expected to be gained on that tablet.
+- **Risk**: likelihood of regressions or of a noticeable behavior change.
 
-## Nivel 1: impacto alto, riesgo bajo (empezar por aquí)
+## Tier 1: high impact, low risk (start here)
 
-| # | Área | Problema | Dónde | Propuesta | Imp. | Riesgo |
+| # | Area | Problem | Where | Proposal | Imp. | Risk |
 |---|------|----------|-------|-----------|------|--------|
-| 1 | Iconos y arranque | El ajuste `alwaysReloadIcons` viene activado por defecto. Hace `reloadIcons()` en cada `onCreate`, lo que vacía la BD de iconos y la caché y obliga a renderizar de nuevo todos los iconos (paquete, normalizador, sombra por software y escritura en la BD). Además ocurre en cada muerte por poca memoria. La KDoc dice "si hay un icon pack activo", pero el código no lo comprueba. | `lawnchair/res/values/config.xml:110`, `LawnchairLauncher.kt:252,498` | Poner el valor por defecto a `false` o condicionarlo a que haya un icon pack cuya versión haya cambiado. | Muy alto | Bajo |
-| 2 | Iconos | `ACTION_TIME_TICK`: cada minuto lanza un `onAppIconChanged` por cada reloj del icon pack y por cada usuario. Cada llamada supone un `PackageUpdatedTask` (renderizado, IPC y rebind). Los relojes ya se animan solos con `ClockDrawableWrapper`. | `icons/LawnchairIconProvider.kt:310-326` | Escuchar solo `TIMEZONE`, `TIME_CHANGED` y `DATE_CHANGED`. | Alto (con pack) | Bajo |
-| 3 | Arranque | La BD Room se abre y se hacen 3 `wal_checkpoint(full)` con `runBlocking` en el hilo principal en cada `onCreate`. Cada uno hace fsync en una eMMC lenta. | `LawnchairLauncher.kt:254`, `data/AppDatabase.kt:34` | Hacerlo en `Dispatchers.IO` desde `onStop`, o solo antes de una copia de seguridad. | Alto | Bajo |
-| 4 | Arranque | El baseline profile no se instala. `InitializationProvider` se elimina en el manifest, así que `ProfileInstallerInitializer` nunca se ejecuta, y nada llama a `ProfileInstaller`. Además, el perfil está en `src/lawnWithQuickstepRelease/`, una carpeta sin la dimensión channel (?, quizá no se empaqueta). Por último, `baseline-profile` apunta a `app.lawnchair`. | `AndroidManifest-common.xml:188`, `baseline-profile/.../Constants.kt:4` | Llamar a `ProfileInstaller.writeProfile()` en segundo plano unos 5 s después del primer frame, comprobar que el APK contiene `assets/dexopt/baseline.prof` y corregir el paquete. | Alto | Bajo |
-| 5 | Búsqueda | La búsqueda "solo apps" calcula los resultados en `Dispatchers.Main`: FuzzyWuzzy sobre todas las apps más la IPC `getShortcuts`, en cada pulsación. Además lee `AllAppsList` fuera del hilo del modelo. | `search/algorithms/LawnchairAppSearchAlgorithm.kt:60` | Calcular en el hilo del modelo o en `Default` y publicar solo el resultado. | Alto | Bajo |
-| 6 | Búsqueda | En la búsqueda local (la opción por defecto), `combine()` espera a que todos los proveedores emitan. Las sugerencias web tardan hasta 1000 ms, así que las apps aparecen con ese retraso. | `search/algorithms/LawnchairLocalSearchAlgorithm.kt:70-87`, `config.xml:169` | Emitir las apps y la calculadora en cuanto estén y combinar después el resto (`merge`/`scan` o `onStart{emit(empty)}`). | Alto (percibido) | Bajo |
-| 7 | Búsqueda | No hay debounce: se encola un `ModelUpdateTask` por cada pulsación y las búsquedas obsoletas no se cancelan. Cada pulsación hace además unas 4 o más lecturas `firstBlocking` de DataStore y dos IPC sin caché (`resolveMarketSearchActivity`). | `AllAppsSearchBarController.java:103`, `AppSearchProvider.kt:17-20`, `SearchTargetFactory.kt:533` | Debounce de 100-150 ms con `collectLatest` o número de secuencia, preferencias en caché y componente del market en caché. | Alto | Bajo |
-| 8 | Animaciones | La animación "suck-in" al cerrar una app (opción por defecto) usa una vista a pantalla completa con `LAYER_TYPE_SOFTWARE`. Anima escala, traslación y alfa y crea un `ViewOutlineProvider` nuevo en cada frame. Se activa sin QuickSwitch (?, comprobar si pasa en la tablet). | `views/FullScreenOverlayView.kt:41,86-91` | Usar capa `HARDWARE` o ninguna y reutilizar el outline. En dispositivos con poca RAM, usar `fade_in` por defecto. | Alto | Bajo |
-| 9 | Hilo principal | Se usa `firstBlocking()` (`runBlocking { flow.first() }`) en rutas calientes: `updateHeaderScroll` en cada evento de scroll del cajón (3 lecturas y parseo JSON del color), `CellLayout.isOccupied` en los bucles de reordenación, `Workspace.onInterceptTouchEvent`, `PagedView` en el fling y `BubbleTextView.shouldTextBeVisible`. | `ActivityAllAppsContainerView.java:807,834,842`, `CellLayout.java:1866,1949`, `Workspace.java:1211`, `BubbleTextView.java:866` | Guardar los valores en campos que se actualicen con `onEach`/`StateFlow` (`LawnchairScrimView` ya sigue ese patrón). | Medio-alto | Bajo |
+| 1 | Icons and startup | The `alwaysReloadIcons` setting is enabled by default. It calls `reloadIcons()` on every `onCreate`, which empties the icon DB and the cache and forces every icon to be re-rendered (pack, normalizer, software shadow and DB write). It also happens on every low-memory kill. The KDoc says "if an icon pack is active", but the code does not check it. | `lawnchair/res/values/config.xml:110`, `LawnchairLauncher.kt:252,498` | Set the default value to `false` or make it conditional on there being an icon pack whose version has changed. | Very high | Low |
+| 2 | Icons | `ACTION_TIME_TICK`: every minute it fires an `onAppIconChanged` for each clock in the icon pack and for each user. Each call means a `PackageUpdatedTask` (rendering, IPC and rebind). The clocks already animate themselves with `ClockDrawableWrapper`. | `icons/LawnchairIconProvider.kt:310-326` | Listen only to `TIMEZONE`, `TIME_CHANGED` and `DATE_CHANGED`. | High (with pack) | Low |
+| 3 | Startup | The Room DB is opened and 3 `wal_checkpoint(full)` are run with `runBlocking` on the main thread on every `onCreate`. Each one does an fsync on slow eMMC. | `LawnchairLauncher.kt:254`, `data/AppDatabase.kt:34` | Do it on `Dispatchers.IO` from `onStop`, or only before a backup. | High | Low |
+| 4 | Startup | The baseline profile is not installed. `InitializationProvider` is removed in the manifest, so `ProfileInstallerInitializer` never runs, and nothing calls `ProfileInstaller`. In addition, the profile is in `src/lawnWithQuickstepRelease/`, a folder without the channel dimension (?, it may not be packaged). Finally, `baseline-profile` points to `app.lawnchair`. | `AndroidManifest-common.xml:188`, `baseline-profile/.../Constants.kt:4` | Call `ProfileInstaller.writeProfile()` in the background about 5 s after the first frame, check that the APK contains `assets/dexopt/baseline.prof` and fix the package. | High | Low |
+| 5 | Search | The "apps only" search computes results on `Dispatchers.Main`: FuzzyWuzzy over all apps plus the `getShortcuts` IPC, on every keystroke. It also reads `AllAppsList` off the model thread. | `search/algorithms/LawnchairAppSearchAlgorithm.kt:60` | Compute on the model thread or on `Default` and publish only the result. | High | Low |
+| 6 | Search | In local search (the default option), `combine()` waits for all providers to emit. Web suggestions take up to 1000 ms, so apps appear with that delay. | `search/algorithms/LawnchairLocalSearchAlgorithm.kt:70-87`, `config.xml:169` | Emit apps and the calculator as soon as they are ready and combine the rest afterwards (`merge`/`scan` or `onStart{emit(empty)}`). | High (perceived) | Low |
+| 7 | Search | There is no debounce: one `ModelUpdateTask` is queued per keystroke and stale searches are not cancelled. Each keystroke also does about 4 or more DataStore `firstBlocking` reads and two uncached IPCs (`resolveMarketSearchActivity`). | `AllAppsSearchBarController.java:103`, `AppSearchProvider.kt:17-20`, `SearchTargetFactory.kt:533` | 100-150 ms debounce with `collectLatest` or a sequence number, cached preferences and cached market component. | High | Low |
+| 8 | Animations | The "suck-in" animation when closing an app (default option) uses a full-screen view with `LAYER_TYPE_SOFTWARE`. It animates scale, translation and alpha and creates a new `ViewOutlineProvider` on every frame. It is enabled without QuickSwitch (?, check whether it happens on the tablet). | `views/FullScreenOverlayView.kt:41,86-91` | Use a `HARDWARE` layer or none and reuse the outline. On low-RAM devices, use `fade_in` by default. | High | Low |
+| 9 | Main thread | `firstBlocking()` (`runBlocking { flow.first() }`) is used on hot paths: `updateHeaderScroll` on every drawer scroll event (3 reads and JSON parsing of the color), `CellLayout.isOccupied` in the reorder loops, `Workspace.onInterceptTouchEvent`, `PagedView` on fling and `BubbleTextView.shouldTextBeVisible`. | `ActivityAllAppsContainerView.java:807,834,842`, `CellLayout.java:1866,1949`, `Workspace.java:1211`, `BubbleTextView.java:866` | Store the values in fields updated with `onEach`/`StateFlow` (`LawnchairScrimView` already follows that pattern). | Medium-high | Low |
 
-## Nivel 2: impacto alto o medio, riesgo medio
+## Tier 2: high or medium impact, medium risk
 
-| # | Área | Problema | Dónde | Propuesta | Imp. | Riesgo |
+| # | Area | Problem | Where | Proposal | Imp. | Risk |
 |---|------|----------|-------|-----------|------|--------|
-| 10 | Arranque y prefs | `PreferenceManager2.init` hace `iconShape.firstBlocking()`, el primer acceso a DataStore: lee y parsea el fichero completo y comprueba la migración, todo en el hilo principal. `getRemoteDefault()` lee una segunda DataStore y crea un `Json{}` nuevo, dos veces. `QsbSearchProvider.resolveDefault` hace N IPC de forma anticipada. | `preferences2/PreferenceManager2.kt:224,504,742,786` | Calentar DataStore en segundo plano desde el inicializador de proceso y hacer perezosos los valores por defecto remotos y el QSB. | Alto | Medio |
-| 11 | Arranque y prefs | Hay unas 22 llamadas `firstBlocking` por cada `DeviceProfile` (11 en `DeviceProfile` y 11 en `DeviceProfileOverrides`), y el IDP construye varios en el hilo principal. | `DeviceProfile.java`, `DeviceProfileOverrides.kt:92-135` | Leer una instantánea de las prefs una sola vez y pasársela. | Medio-alto | Medio |
-| 12 | Iconos | La clave de estado de la caché (`getSystemIconState`) depende de `isThemeEnabled` y `iconPackVersion`, que se rellenan de forma perezosa. `verifyIconChanged` puede ver una clave distinta al arrancar y borrar la caché entera (?). | `LawnchairIconProvider.kt:68-85,230-235` | Construir la clave a partir de las prefs o calcular el mapa al principio. Confirmarlo antes con un log. | Alto (?) | Bajo |
-| 13 | Iconos | Por cada icono adaptativo se crea una segunda sombra con `BlurMaskFilter` por software y una copia ARGB completa, aunque ya lleva sombra de contorno (path shadow). | `iconloaderlib/.../BaseIconFactory.java:252-256` | Eliminar la segunda pasada, o hacerlo opcional para poca RAM. | Medio-alto | Medio (cambia el aspecto) |
-| 14 | Iconos | El `appfilter.xml` se parsea en cada arranque de proceso, sin caché en disco. El primer icono bloquea el hilo del modelo hasta que termina (`loadBlocking`). `CustomIconPack` llama a `getResourcesForApplication` en el hilo principal. Los mapas no son thread-safe. El themed pack se carga aunque los iconos temáticos estén desactivados. | `icons/iconpack/CustomIconPack.kt:24,69-130`, `IconPackProvider.kt:47` | Guardar el mapa serializado con la clave versionCode+lastUpdateTime, usar `ConcurrentHashMap` y cargar el themed pack de forma perezosa. | Medio | Bajo |
-| 15 | Cajón | Las carpetas del cajón se vuelven a inflar en cada bind (`removeAllViews` + `inflateFolderAndIcon`), y `Folder.bind` añade un listener cada vez, lo que provoca fuga y GC. | `allapps/BaseAllAppsAdapter.java` (caso carpeta), `Folder.java:570` | Inflar una vez por ViewHolder, crear el `Folder` al tocar y quitar el listener al reciclar. | Alto (si hay carpetas) | Medio |
-| 16 | Cajón | El modo categorías hace `getPackageInfo`/`getApplicationInfo` por app y por regla en cada reconstrucción del adaptador. El modo carpetas usa un `contains` O(N·M). | `util/AppCategorizationUtils.kt:30`, `FlowerpotApps.kt:59`, `LawnchairAlphabeticalAppsList.kt:90,119` | Usar las flags de `AppInfo`, caché por paquete y `HashSet`. | Alto (si se usa) | Bajo |
-| 17 | Desenfoque | El fondo desenfocado (desactivado por defecto) se construye en el constructor de `LauncherRootView`, en el hilo principal: decodifica el wallpaper a resolución completa, crea 3 bitmaps ARGB a pantalla completa e inicializa un contexto GL de HokoBlur. Además añade overdraw a pantalla completa. | `LauncherRootView.java:64-115` | Reducir a 1/4, desenfocar en segundo plano, usar un solo bitmap RGB_565 y, si se puede, ponerlo como fondo de ventana. | Alto (si se usa) | Medio |
-| 18 | Cajón tablet | En tablet, el sheet opaco se dibuja encima del workspace y del wallpaper, que siguen dibujándose. En API 29 no hay blur que lo justifique (?). | `ActivityAllAppsContainerView.java:1093,1489`, `AllAppsState.java:219` | En API < 31, ocultar el workspace cuando el sheet está abierto del todo. | Medio | Medio |
+| 10 | Startup and prefs | `PreferenceManager2.init` does `iconShape.firstBlocking()`, the first DataStore access: it reads and parses the whole file and checks the migration, all on the main thread. `getRemoteDefault()` reads a second DataStore and creates a new `Json{}`, twice. `QsbSearchProvider.resolveDefault` does N IPCs eagerly. | `preferences2/PreferenceManager2.kt:224,504,742,786` | Warm up DataStore in the background from the process initializer and make the remote defaults and the QSB lazy. | High | Medium |
+| 11 | Startup and prefs | There are about 22 `firstBlocking` calls per `DeviceProfile` (11 in `DeviceProfile` and 11 in `DeviceProfileOverrides`), and the IDP builds several of them on the main thread. | `DeviceProfile.java`, `DeviceProfileOverrides.kt:92-135` | Read a snapshot of the prefs once and pass it along. | Medium-high | Medium |
+| 12 | Icons | The cache state key (`getSystemIconState`) depends on `isThemeEnabled` and `iconPackVersion`, which are filled lazily. `verifyIconChanged` may see a different key at startup and wipe the whole cache (?). | `LawnchairIconProvider.kt:68-85,230-235` | Build the key from the prefs or compute the map up front. Confirm it first with a log. | High (?) | Low |
+| 13 | Icons | For each adaptive icon, a second shadow is created with software `BlurMaskFilter` plus a full ARGB copy, even though it already has an outline shadow (path shadow). | `iconloaderlib/.../BaseIconFactory.java:252-256` | Remove the second pass, or make it optional for low RAM. | Medium-high | Medium (changes appearance) |
+| 14 | Icons | `appfilter.xml` is parsed on every process start, with no disk cache. The first icon blocks the model thread until it finishes (`loadBlocking`). `CustomIconPack` calls `getResourcesForApplication` on the main thread. The maps are not thread-safe. The themed pack is loaded even when themed icons are disabled. | `icons/iconpack/CustomIconPack.kt:24,69-130`, `IconPackProvider.kt:47` | Store the serialized map keyed by versionCode+lastUpdateTime, use `ConcurrentHashMap` and load the themed pack lazily. | Medium | Low |
+| 15 | Drawer | Drawer folders are re-inflated on every bind (`removeAllViews` + `inflateFolderAndIcon`), and `Folder.bind` adds a listener each time, which causes a leak and GC. | `allapps/BaseAllAppsAdapter.java` (folder case), `Folder.java:570` | Inflate once per ViewHolder, create the `Folder` on tap and remove the listener on recycle. | High (if there are folders) | Medium |
+| 16 | Drawer | Categories mode calls `getPackageInfo`/`getApplicationInfo` per app and per rule on every adapter rebuild. Folders mode uses an O(N·M) `contains`. | `util/AppCategorizationUtils.kt:30`, `FlowerpotApps.kt:59`, `LawnchairAlphabeticalAppsList.kt:90,119` | Use the `AppInfo` flags, a per-package cache and `HashSet`. | High (if used) | Low |
+| 17 | Blur | The blurred wallpaper (disabled by default) is built in the `LauncherRootView` constructor, on the main thread: it decodes the wallpaper at full resolution, creates 3 full-screen ARGB bitmaps and initializes a HokoBlur GL context. It also adds full-screen overdraw. | `LauncherRootView.java:64-115` | Downscale to 1/4, blur in the background, use a single RGB_565 bitmap and, if possible, set it as the window background. | High (if used) | Medium |
+| 18 | Tablet drawer | On tablet, the opaque sheet is drawn over the workspace and the wallpaper, which keep being drawn. On API 29 there is no blur to justify it (?). | `ActivityAllAppsContainerView.java:1093,1489`, `AllAppsState.java:219` | On API < 31, hide the workspace when the sheet is fully open. | Medium | Medium |
 
-## Nivel 3: impacto bajo o medio, riesgo bajo (hacerlos de paso)
+## Tier 3: low or medium impact, low risk (do them along the way)
 
-- **Arranque.** `LauncherOptionsPopup.restoreMissingPopupOptions`/`migrateLegacyPreferences` hace 5 `firstBlocking` y un `setBlocking` en cada arranque (`LawnchairLauncher.kt:237`). Propuesta: hacerlo una sola vez, controlado por un flag de migración.
-- **Arranque.** El overlay del feed hace `reconnect()` (IPC `resolveService`) nada más construirse (`OverlayCallbackImpl.kt:168`). Propuesta: añadir `.drop(1)`.
-- **Arranque.** Smartspace consulta los widgets e inicia `HeadlessWidgetsManager` aunque el tiempo esté desactivado (`SmartspaceWidgetReader.kt:41`). Propuesta: crearlo de forma perezosa.
-- **Arranque.** `LawnchairBugReporter` borra los logs en el hilo principal. `FontCache` carga en `MainScope` y `TTFFont` lee de disco en el hilo principal.
-- **Iconos.** En el tema clásico de Lawnicons (v1-3), `themeMap` se recalcula en cada acceso (`LawnchairIconProvider.kt:76-79`).
-- **Iconos.** `SystemIconPack` se crea de nuevo en cada llamada (`IconPackProvider.kt:22`).
-- **Iconos.** Los drawables de los icon packs se decodifican a resolución completa (`CustomIconPack.kt:53`), cuando bastaría con `setTargetSize`.
-- **Iconos.** `ThemedIconDrawable` infla el monocromo en cada `newIcon()` y crea un `CustomAdaptiveIconDrawable` con un bitmap que no se usa.
-- **Búsqueda.** `AppMatcher` crea `Regex("\\s+")` dos veces por app y por pulsación. Propuesta: tokenizar una vez y no usar fuzzy por debajo de 3 caracteres.
-- **Búsqueda.** `SettingsSearchProvider` hace reflexión en cada consulta.
-- **Búsqueda.** `FileSearchProvider` hace un `LIKE '%kw%'` sin `LIMIT`, más un stat por fila.
-- **Búsqueda.** La calculadora usa excepciones como control de flujo.
-- **Búsqueda.** `SearchResultIcon` encola con `postAtFrontOfQueue` en `MODEL_EXECUTOR` sin caché.
-- **Animación.** Al enfocar la barra de búsqueda se anima `setPadding`, lo que provoca un layout en cada frame (`AllAppsSearchInput.kt:276`).
-- **Compose.** Solo se usa en `ComposeBottomSheet` (sheets transitorios). En el cajón y en el escritorio no hay riesgo de recomposición.
+- **Startup.** `LauncherOptionsPopup.restoreMissingPopupOptions`/`migrateLegacyPreferences` does 5 `firstBlocking` and one `setBlocking` on every startup (`LawnchairLauncher.kt:237`). Proposal: do it only once, guarded by a migration flag.
+- **Startup.** The feed overlay calls `reconnect()` (`resolveService` IPC) right after being constructed (`OverlayCallbackImpl.kt:168`). Proposal: add `.drop(1)`.
+- **Startup.** Smartspace queries the widgets and starts `HeadlessWidgetsManager` even when weather is disabled (`SmartspaceWidgetReader.kt:41`). Proposal: create it lazily.
+- **Startup.** `LawnchairBugReporter` deletes logs on the main thread. `FontCache` loads on `MainScope` and `TTFFont` reads from disk on the main thread.
+- **Icons.** In the classic Lawnicons theme (v1-3), `themeMap` is recomputed on every access (`LawnchairIconProvider.kt:76-79`).
+- **Icons.** `SystemIconPack` is created anew on every call (`IconPackProvider.kt:22`).
+- **Icons.** Icon pack drawables are decoded at full resolution (`CustomIconPack.kt:53`), when `setTargetSize` would suffice.
+- **Icons.** `ThemedIconDrawable` inflates the monochrome on every `newIcon()` and creates a `CustomAdaptiveIconDrawable` with a bitmap that is not used.
+- **Search.** `AppMatcher` creates `Regex("\\s+")` twice per app and per keystroke. Proposal: tokenize once and do not use fuzzy below 3 characters.
+- **Search.** `SettingsSearchProvider` uses reflection on every query.
+- **Search.** `FileSearchProvider` does a `LIKE '%kw%'` with no `LIMIT`, plus a stat per row.
+- **Search.** The calculator uses exceptions as control flow.
+- **Search.** `SearchResultIcon` enqueues with `postAtFrontOfQueue` on `MODEL_EXECUTOR` without a cache.
+- **Animation.** Focusing the search bar animates `setPadding`, which causes a layout on every frame (`AllAppsSearchInput.kt:276`).
+- **Compose.** It is only used in `ComposeBottomSheet` (transient sheets). In the drawer and on the desktop there is no recomposition risk.
 
-## Errores encontrados de paso (no son de rendimiento)
+## Bugs found along the way (not performance-related)
 
-- `BaseIconCache.java:665`: en API < 33 el color se lee con `c.getInt(0)`, que es la columna `componentName` (texto). En Android 10 el color de los puntos de notificación y de los popups probablemente sale mal.
-- `BaseAllAppsAdapter.java`: `VIEW_TYPE_PRIVATE_SPACE_HEADER` no tiene `break` y cae en el caso de carpeta (?).
-- `LawnchairLauncher.kt:199`: `statusBarClock.get().onEach{}` no tiene `launchIn`, así que nunca se recoge.
+- `BaseIconCache.java:665`: on API < 33 the color is read with `c.getInt(0)`, which is the `componentName` column (text). On Android 10 the color of notification dots and popups probably comes out wrong.
+- `BaseAllAppsAdapter.java`: `VIEW_TYPE_PRIVATE_SPACE_HEADER` has no `break` and falls through to the folder case (?).
+- `LawnchairLauncher.kt:199`: `statusBarClock.get().onEach{}` has no `launchIn`, so it is never collected.
 
-## Qué medir en la tablet antes de tocar nada
+## What to measure on the tablet before touching anything
 
-Mide sobre un **APK release**: `./gradlew assembleLawnWithQuickstepGithubRelease`, que sin keystore se firma con la clave de debug. El APK debug es `debuggable`, ART no lo optimiza igual y los tiempos no son representativos. Para usar Perfetto o simpleperf con un release, añade `<profileable android:shell="true"/>` (disponible desde API 29).
+Measure on a **release APK**: `./gradlew assembleLawnWithQuickstepGithubRelease`, which without a keystore is signed with the debug key. The debug APK is `debuggable`, ART does not optimize it the same way and the timings are not representative. To use Perfetto or simpleperf with a release, add `<profileable android:shell="true"/>` (available since API 29).
 
 ```
-PKG=io.github.jtorregrosa.evergreen   # release (en debug: io.github.jtorregrosa.evergreen.debug)
+PKG=io.github.jtorregrosa.evergreen   # release (in debug: io.github.jtorregrosa.evergreen.debug)
 ACT=$PKG/app.lawnchair.LawnchairLauncher
 ```
 
-0. **Contexto del dispositivo.** Ejecuta `adb shell getprop ro.product.model; getprop ro.config.low_ram; cat /proc/meminfo | head -3`, cuenta las apps con `adb shell pm list packages -3 | wc -l` y apunta qué icon pack y qué opciones usas. Pon Evergreen como launcher por defecto.
-1. **Arranque en frío.** Repítelo unas 10 veces y quédate con la mediana:
-   - `adb shell am force-stop $PKG && adb shell am start -W -n $ACT -a android.intent.action.MAIN -c android.intent.category.HOME`, anotando TotalTime y WaitTime.
-   - `adb logcat -b events | grep am_activity_launch_time` y `adb logcat | grep "Displayed\|Fully drawn"`.
-   - Hazlo en tres estados de compilación:
-     - `adb shell cmd package compile -m verify -f $PKG`, que simula una instalación recién hecha sin perfil.
-     - `-m speed-profile -f`, el caso ideal con perfil.
-     - Tal como quede tras unos días de uso.
-   - `adb shell dumpsys package dexopt | grep -A2 $PKG` indica qué estado tiene ahora.
-2. **Tiempo hasta ver los iconos y re-renderizado de la caché.** Haz una traza de Perfetto del arranque en frío y fíjate en `LoaderTask`, los bloques `binder transaction` y la actividad del hilo `launcher-loader`. Compara con y sin icon pack, y con `alwaysReloadIcons` activado y desactivado (está en Ajustes › Iconos o en las opciones de depuración).
-3. **Perfetto en Android 10.** Primero `adb shell setprop persist.traced.enable 1`. Después usa `record_android_trace` (del repositorio de Perfetto) o ui.perfetto.dev con estas categorías: `sched freq idle am wm gfx view binder_driver dalvik disk` más `-a $PKG`. Escenarios: arranque en frío, abrir el cajón, hacer scroll rápido, escribir "goo" en la búsqueda y volver a casa desde una app (animación de cierre).
-4. **Fluidez del cajón y del escritorio.**
+0. **Device context.** Run `adb shell getprop ro.product.model; getprop ro.config.low_ram; cat /proc/meminfo | head -3`, count the apps with `adb shell pm list packages -3 | wc -l` and note which icon pack and which options you use. Set Evergreen as the default launcher.
+1. **Cold start.** Repeat it about 10 times and keep the median:
+   - `adb shell am force-stop $PKG && adb shell am start -W -n $ACT -a android.intent.action.MAIN -c android.intent.category.HOME`, noting TotalTime and WaitTime.
+   - `adb logcat -b events | grep am_activity_launch_time` and `adb logcat | grep "Displayed\|Fully drawn"`.
+   - Do it in three compilation states:
+     - `adb shell cmd package compile -m verify -f $PKG`, which simulates a fresh install without a profile.
+     - `-m speed-profile -f`, the ideal case with a profile.
+     - As it ends up after a few days of use.
+   - `adb shell dumpsys package dexopt | grep -A2 $PKG` shows its current state.
+2. **Time until icons are visible and cache re-rendering.** Take a Perfetto trace of the cold start and look at `LoaderTask`, the `binder transaction` blocks and the activity of the `launcher-loader` thread. Compare with and without an icon pack, and with `alwaysReloadIcons` enabled and disabled (it is in Settings › Icons or in the debug options).
+3. **Perfetto on Android 10.** First `adb shell setprop persist.traced.enable 1`. Then use `record_android_trace` (from the Perfetto repository) or ui.perfetto.dev with these categories: `sched freq idle am wm gfx view binder_driver dalvik disk` plus `-a $PKG`. Scenarios: cold start, open the drawer, scroll fast, type "goo" in search and go back home from an app (close animation).
+4. **Drawer and desktop smoothness.**
    - `adb shell dumpsys gfxinfo $PKG reset`.
-   - Abre el cajón y haz 10 swipes con `adb shell input swipe 600 1500 600 300 150`.
-   - `adb shell dumpsys gfxinfo $PKG`: anota Janky frames y los percentiles 50, 90, 95 y 99, y saca `framestats` si quieres el detalle por frame.
-   - Repite con las carpetas o categorías del cajón activadas si las usas.
-5. **Overdraw y GPU.** Usa `adb shell setprop debug.hwui.overdraw show` y `setprop debug.hwui.profile visual_bars`, reinicia el launcher y haz capturas de pantalla del escritorio, del cajón y de la búsqueda.
-6. **Bloqueos del hilo principal.** En la traza de Perfetto, busca en el hilo `main` los slices de `binder transaction`, de `Lock contention` y los huecos de `runBlocking`. Si quieres, activa StrictMode en un build debug (`Launcher.java:304`).
-7. **Memoria y muertes.** `adb shell dumpsys meminfo $PKG` en reposo y con el cajón abierto. Anota cuántas veces se recrea el launcher con `adb logcat -b events | grep am_proc_died` tras abrir apps pesadas, porque cada recreación paga el punto 1 de la tabla.
-8. **Búsqueda.** En Perfetto, mide el tiempo entre `input` (tecla) y el frame con los resultados. Prueba la búsqueda local con y sin sugerencias web.
+   - Open the drawer and do 10 swipes with `adb shell input swipe 600 1500 600 300 150`.
+   - `adb shell dumpsys gfxinfo $PKG`: note Janky frames and the 50th, 90th, 95th and 99th percentiles, and pull `framestats` if you want per-frame detail.
+   - Repeat with drawer folders or categories enabled if you use them.
+5. **Overdraw and GPU.** Use `adb shell setprop debug.hwui.overdraw show` and `setprop debug.hwui.profile visual_bars`, restart the launcher and take screenshots of the desktop, the drawer and search.
+6. **Main thread stalls.** In the Perfetto trace, look on the `main` thread for `binder transaction` slices, `Lock contention` slices and `runBlocking` gaps. Optionally, enable StrictMode in a debug build (`Launcher.java:304`).
+7. **Memory and deaths.** `adb shell dumpsys meminfo $PKG` at idle and with the drawer open. Note how many times the launcher is recreated with `adb logcat -b events | grep am_proc_died` after opening heavy apps, because each recreation pays for item 1 of the table.
+8. **Search.** In Perfetto, measure the time between `input` (key) and the frame with the results. Try local search with and without web suggestions.
 
-Haz cada medición con la versión base, que es este APK sin cambios, y después de cada bloque de mejoras. Cambia una cosa cada vez.
+Take each measurement with the base version, which is this APK without changes, and after each block of improvements. Change one thing at a time.
