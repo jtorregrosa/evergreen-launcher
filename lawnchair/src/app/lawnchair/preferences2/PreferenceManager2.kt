@@ -64,13 +64,22 @@ import com.android.launcher3.util.SafeCloseable
 import com.patrykmichalik.opto.core.PreferenceManager
 import com.patrykmichalik.opto.core.firstBlocking
 import com.patrykmichalik.opto.core.setBlocking
+import com.patrykmichalik.opto.domain.Preference
+import java.util.concurrent.ConcurrentHashMap
 import kotlinx.coroutines.MainScope
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.SharingStarted
+import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.drop
 import kotlinx.coroutines.flow.launchIn
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.onEach
+import kotlinx.coroutines.flow.stateIn
 
 class PreferenceManager2 private constructor(private val context: Context) :
     PreferenceManager,
@@ -794,6 +803,26 @@ class PreferenceManager2 private constructor(private val context: Context) :
             }
         }
 
+    // Evergreen: non-blocking reads for hot paths (per frame / per measure / per keystroke).
+    private val cachedPrefStates = ConcurrentHashMap<Preference<*, *, *>, StateFlow<*>>()
+
+    /**
+     * Returns the current value of [pref]. Only the first call for a given preference blocks (to
+     * read DataStore once); after that the value comes from a [StateFlow] kept up to date by
+     * collecting the preference on [scope], so it reflects changes as soon as DataStore emits.
+     * Use this instead of `firstBlocking()` on paths that run per frame, per measure or per event.
+     */
+    fun <T> cachedValue(pref: Preference<T, *, *>): T {
+        cachedPrefStates[pref]?.let {
+            @Suppress("UNCHECKED_CAST")
+            return (it as StateFlow<T>).value
+        }
+        val state = pref.get().stateIn(scope, SharingStarted.Eagerly, pref.firstBlocking())
+        cachedPrefStates.putIfAbsent(pref, state)
+        @Suppress("UNCHECKED_CAST")
+        return (cachedPrefStates.getValue(pref) as StateFlow<T>).value
+    }
+
     companion object {
         private val Context.preferencesDataStore by preferencesDataStore(
             name = "preferences",
@@ -805,6 +834,19 @@ class PreferenceManager2 private constructor(private val context: Context) :
 
         @JvmStatic
         fun getInstance(context: Context) = INSTANCE.get(context)!!
+
+        /**
+         * Evergreen: start the first (cold) DataStore read on a background thread at process start,
+         * so PreferenceManager2's construction on the main thread finds the data already loaded
+         * (or in flight) instead of doing the disk read + parse + migration itself.
+         */
+        @JvmStatic
+        fun prewarm(context: Context) {
+            val appContext = context.applicationContext
+            CoroutineScope(Dispatchers.IO).launch {
+                runCatching { appContext.preferencesDataStore.data.first() }
+            }
+        }
 
         private const val TAG = "PreferenceManager2"
     }

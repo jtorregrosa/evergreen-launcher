@@ -274,6 +274,12 @@ class AllAppsSearchInput(context: Context, attrs: AttributeSet?) :
     }
 
     private fun animatePadding(newPaddingLeft: Int, newPaddingRight: Int) {
+        // Evergreen: animating padding forces a full measure/layout of the drawer header on every
+        // frame, in the same frames as the IME animation. On pre-S devices just apply it.
+        if (!Utilities.ATLEAST_S) {
+            setPadding(newPaddingLeft, paddingTop, newPaddingRight, paddingBottom)
+            return
+        }
         val currentPaddingLeft = paddingLeft
         val currentPaddingRight = paddingRight
 

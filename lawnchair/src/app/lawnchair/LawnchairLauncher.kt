@@ -20,6 +20,7 @@ import android.animation.AnimatorSet
 import android.app.ActivityOptions
 import android.content.Context
 import android.content.Intent
+import android.content.pm.PackageManager
 import android.graphics.Color
 import android.graphics.RectF
 import android.graphics.drawable.Drawable
@@ -31,12 +32,13 @@ import android.view.ViewTreeObserver
 import android.window.SplashScreen
 import androidx.activity.SystemBarStyle
 import androidx.activity.enableEdgeToEdge
+import androidx.core.content.pm.PackageInfoCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.WindowInsetsControllerCompat
 import androidx.lifecycle.lifecycleScope
+import androidx.profileinstaller.ProfileInstaller
 import app.lawnchair.LawnchairApp.Companion.showQuickstepWarningIfNecessary
 import app.lawnchair.compat.LawnchairQuickstepCompat
-import app.lawnchair.data.AppDatabase
 import app.lawnchair.data.wallpaper.service.WallpaperService
 import app.lawnchair.factory.LawnchairWidgetHolder
 import app.lawnchair.gestures.GestureController
@@ -72,6 +74,7 @@ import com.android.launcher3.uioverrides.states.BackgroundAppState
 import com.android.launcher3.uioverrides.states.OverviewState
 import com.android.launcher3.util.ActivityOptionsWrapper
 import com.android.launcher3.util.Executors
+import com.android.launcher3.util.IntSet
 import com.android.launcher3.util.RunnableList
 import com.android.launcher3.util.SystemUiController.UI_STATE_BASE_WINDOW
 import com.android.launcher3.util.Themes
@@ -250,8 +253,6 @@ class LawnchairLauncher : QuickstepLauncher() {
         showQuickstepWarningIfNecessary()
 
         reloadIconsIfNeeded()
-
-        AppDatabase.INSTANCE.get(this).checkpointSync()
     }
 
     override fun collectStateHandlers(out: MutableList<StateHandler<LauncherState>>) {
@@ -346,7 +347,7 @@ class LawnchairLauncher : QuickstepLauncher() {
     ): OptionsPopupView<T>? where T : Context?, T : ActivityContext? {
         if (activityContext == null) return null
 
-        val isEmpty = WallpaperService.INSTANCE.get(this).getTopWallpapers().isEmpty()
+        val isEmpty = !WallpaperService.INSTANCE.get(this).hasTopWallpapers()
         val layout = if (isEmpty) R.layout.longpress_options_menu else R.layout.wallpaper_options_popup
 
         val popup = activityContext.layoutInflater.inflate(layout, activityContext.dragLayer, false) as OptionsPopupView<T>
@@ -404,6 +405,9 @@ class LawnchairLauncher : QuickstepLauncher() {
     }
 
     override fun getActivityLaunchOptions(v: View?, item: ItemInfo?): ActivityOptionsWrapper {
+        // Evergreen: without recents the transition manager is never created, so super threw (and
+        // we caught) a NullPointerException on every app launch. Skip straight to the fallback.
+        if (!LawnchairApp.isRecentsEnabled) return getActivityLaunchOptionsDefault(v)
         return runCatching {
             super.getActivityLaunchOptions(v, item)
         }.getOrElse {
@@ -467,6 +471,36 @@ class LawnchairLauncher : QuickstepLauncher() {
         )
     }
 
+    private var hasReportedFullyDrawn = false
+
+    override fun finishBindingItems(pagesBoundFirst: IntSet) {
+        super.finishBindingItems(pagesBoundFirst)
+        // Evergreen: expose time-to-full-display ("Fully drawn" in logcat) for startup measurements.
+        if (!hasReportedFullyDrawn) {
+            hasReportedFullyDrawn = true
+            runCatching { reportFullyDrawn() }
+            // Evergreen: androidx.startup's InitializationProvider is removed from the manifest, so
+            // ProfileInstaller never ran and the packaged baseline profile never reached ART on
+            // sideloaded installs. Install it off the main thread once startup has settled; this is
+            // a no-op when the profile for this APK version is already installed.
+            val appContext = applicationContext
+            Executors.UI_HELPER_EXECUTOR.handler.postDelayed(
+                { runCatching { ProfileInstaller.writeProfile(appContext) } },
+                PROFILE_INSTALL_DELAY_MS,
+            )
+        }
+    }
+
+    override fun onStart() {
+        super.onStart()
+        HeadlessWidgetsManager.INSTANCE.getNoCreate()?.setListening(true)
+    }
+
+    override fun onStop() {
+        super.onStop()
+        HeadlessWidgetsManager.INSTANCE.getNoCreate()?.setListening(false)
+    }
+
     override fun onDestroy() {
         super.onDestroy()
         // Only actually closes if required, safe to call if not enabled
@@ -493,14 +527,30 @@ class LawnchairLauncher : QuickstepLauncher() {
     }
 
     /**
-     * Reloads app icons if there is an active icon pack & [PreferenceManager2.alwaysReloadIcons] is enabled.
+     * Reloads app icons if [PreferenceManager2.alwaysReloadIcons] is enabled, an icon pack (or
+     * themed icon pack) is selected, and that pack was installed or updated since the last reload.
+     *
+     * Evergreen: upstream reloaded unconditionally on every onCreate, which wiped the icon DB and
+     * restarted the loader on each cold start / LMK kill / recreate, re-rendering every icon.
      */
     private fun reloadIconsIfNeeded() {
-        if (
-            preferenceManager2.alwaysReloadIcons.firstBlocking()
-        ) {
-            LauncherAppState.getInstance(this).reloadIcons()
-        }
+        if (!preferenceManager2.alwaysReloadIcons.firstBlocking()) return
+        val stamp = listOf(prefs.iconPackPackage.get(), prefs.themedIconPackPackage.get())
+            .filter { it.isNotEmpty() }
+            .distinct()
+            .joinToString(separator = ";") { pkg -> "$pkg:${packageStamp(pkg)}" }
+        if (stamp.isEmpty()) return
+        val sp = prefs.sp
+        if (sp.getString(ICON_PACK_STAMP_KEY, null) == stamp) return
+        sp.edit().putString(ICON_PACK_STAMP_KEY, stamp).apply()
+        LauncherAppState.getInstance(this).reloadIcons()
+    }
+
+    private fun packageStamp(packageName: String): String = try {
+        val info = packageManager.getPackageInfo(packageName, 0)
+        "${PackageInfoCompat.getLongVersionCode(info)}:${info.lastUpdateTime}"
+    } catch (_: PackageManager.NameNotFoundException) {
+        "missing"
     }
 
     companion object {
@@ -508,6 +558,9 @@ class LawnchairLauncher : QuickstepLauncher() {
         private const val FLAG_RESTART = 1 shl 1
 
         var sRestartFlags = 0
+
+        private const val ICON_PACK_STAMP_KEY = "evergreen_icon_pack_reload_stamp"
+        private const val PROFILE_INSTALL_DELAY_MS = 5_000L
 
         val instance get() = LauncherAppState.getInstanceNoCreate()?.launcher as? LawnchairLauncher
     }

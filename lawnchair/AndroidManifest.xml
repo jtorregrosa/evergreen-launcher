@@ -53,6 +53,11 @@
         tools:node="remove" />
 
     <application>
+        <!-- Evergreen: allow Perfetto/simpleperf on release builds (API 29+). -->
+        <profileable
+            android:shell="true"
+            tools:targetApi="29" />
+
         <meta-data
             android:name="preloaded_fonts"
             android:resource="@array/preloaded_fonts" />

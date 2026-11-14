@@ -11,6 +11,7 @@ import android.graphics.drawable.Icon
 import android.net.Uri
 import android.os.Bundle
 import android.os.Process
+import android.os.SystemClock
 import android.provider.ContactsContract
 import android.provider.MediaStore
 import android.util.Log
@@ -530,7 +531,24 @@ object ContactsTarget {
 }
 
 object SearchLinksTarget {
+    // Evergreen: this ran two PackageManager IPCs on every keystroke; the market app rarely
+    // changes, so cache the resolution for a few minutes.
+    private const val MARKET_CACHE_MS = 5 * 60 * 1000L
+
+    @Volatile private var cachedMarket: ComponentKey? = null
+
+    @Volatile private var cachedMarketAt = 0L
+
     fun resolveMarketSearchActivity(context: Context): ComponentKey? {
+        val now = SystemClock.elapsedRealtime()
+        if (cachedMarketAt != 0L && now - cachedMarketAt < MARKET_CACHE_MS) return cachedMarket
+        return resolveMarketSearchActivityUncached(context).also {
+            cachedMarket = it
+            cachedMarketAt = now
+        }
+    }
+
+    private fun resolveMarketSearchActivityUncached(context: Context): ComponentKey? {
         val intent = PackageManagerHelper.getMarketSearchIntent(context, "")
         val resolveInfo = context.packageManager.resolveActivity(intent, 0) ?: return null
         val packageName = resolveInfo.activityInfo.packageName

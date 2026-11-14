@@ -7,17 +7,16 @@ import app.lawnchair.search.algorithms.filterHiddenApps
 import com.android.launcher3.model.AllAppsList
 import com.android.launcher3.model.data.AppInfo
 import com.android.launcher3.search.StringMatcherUtility
-import com.patrykmichalik.opto.core.firstBlocking
 import java.util.Locale
 
 object AppSearchProvider {
 
     fun search(context: Context, query: String, allApps: AllAppsList): List<SearchResult.App> {
         val prefs = PreferenceManager2.getInstance(context)
-        val hiddenApps = prefs.hiddenApps.firstBlocking()
-        val hiddenAppsInSearch = prefs.hiddenAppsInSearch.firstBlocking()
-        val maxAppResults = prefs.maxAppSearchResultCount.firstBlocking()
-        val enableFuzzySearch = prefs.enableFuzzySearch.firstBlocking()
+        val hiddenApps = prefs.cachedValue(prefs.hiddenApps)
+        val hiddenAppsInSearch = prefs.cachedValue(prefs.hiddenAppsInSearch)
+        val maxAppResults = prefs.cachedValue(prefs.maxAppSearchResultCount)
+        val enableFuzzySearch = prefs.cachedValue(prefs.enableFuzzySearch)
 
         val appResults = if (enableFuzzySearch) {
             fuzzySearch(allApps.data, query, maxAppResults, hiddenApps, hiddenAppsInSearch)

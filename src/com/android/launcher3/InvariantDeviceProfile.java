@@ -580,7 +580,11 @@ public class InvariantDeviceProfile implements SafeCloseable {
                 for (OnIDPChangeListener listener : mChangeListeners) {
                         listener.onIdpChanged(modelPropsChanged);
                 }
-                LauncherAppState.getInstance(context).reloadIcons();
+                // Evergreen: when model props changed, LauncherAppState's IDP listener has already
+                // run refreshAndReloadLauncher(); reloading again wiped and rebuilt everything twice.
+                if (!modelPropsChanged) {
+                        LauncherAppState.getInstance(context).reloadIcons();
+                }
         }
 
         private static ArrayList<DisplayOption> getPredefinedDeviceProfiles(Context context,

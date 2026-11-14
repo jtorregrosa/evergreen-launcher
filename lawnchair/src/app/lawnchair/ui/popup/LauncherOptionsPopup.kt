@@ -36,6 +36,11 @@ object LauncherOptionsPopup {
             defaultItem.identifier !in currentOptions.map { it.identifier }
         }
 
+        // Evergreen: only write when something is actually missing. launcherPopupOrder's onSet
+        // reloads the grid, and InvariantDeviceProfile.onConfigChanged then calls reloadIcons(),
+        // so this unconditional write used to wipe the icon cache and force a full model reload
+        // on every LawnchairLauncher.onCreate.
+        if (missingItems.isEmpty()) return
         prefs2.launcherPopupOrder.setBlocking(
             (missingItems + currentOptions).toOptionOrderString(),
         )

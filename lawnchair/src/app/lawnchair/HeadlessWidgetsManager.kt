@@ -31,8 +31,21 @@ class HeadlessWidgetsManager(private val context: Context) : SafeCloseable {
     private val host = HeadlessAppWidgetHost(context)
     private val widgetsMap = mutableMapOf<String, Widget>()
 
+    private var listening = false
+
     init {
-        host.startListening()
+        setListening(true)
+    }
+
+    /**
+     * Evergreen: the host used to listen forever, so RemoteViews updates (search bar, At a Glance)
+     * were inflated and measured while the launcher was in the background. The launcher now
+     * toggles this from onStart/onStop; startListening() re-delivers pending updates.
+     */
+    fun setListening(listen: Boolean) {
+        if (listen == listening) return
+        listening = listen
+        runCatching { if (listen) host.startListening() else host.stopListening() }
     }
 
     fun getWidget(info: AppWidgetProviderInfo, prefKey: String): Widget {

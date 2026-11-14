@@ -41,7 +41,6 @@ import com.android.launcher3.util.Themes
 import com.android.launcher3.views.ActivityContext
 import com.patrykmichalik.opto.core.firstBlocking
 import com.patrykmichalik.opto.core.onEach
-import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.collect
@@ -59,7 +58,6 @@ class LawnQsbLayout(context: Context, attrs: AttributeSet?) : FrameLayout(contex
     private lateinit var preferenceManager: PreferenceManager
     private lateinit var preferenceManager2: PreferenceManager2
     private var searchPendingIntent: PendingIntent? = null
-    private val coroutineScope = CoroutineScope(Dispatchers.Default)
 
     private var strokeColor: ColorOption? = null
 
@@ -74,7 +72,9 @@ class LawnQsbLayout(context: Context, attrs: AttributeSet?) : FrameLayout(contex
         preferenceManager = PreferenceManager.getInstance(context)
         preferenceManager2 = PreferenceManager2.getInstance(context)
 
-        preferenceManager2.strokeColorStyle.onEach(launchIn = coroutineScope) {
+        // Evergreen: was a never-cancelled Dispatchers.Default scope that also touched views off the
+        // main thread in setUpBackground().
+        preferenceManager2.strokeColorStyle.onEach(launchIn = viewAttachedScope) {
             strokeColor = it
             setUpBackground()
         }
