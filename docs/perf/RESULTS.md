@@ -117,6 +117,33 @@ Notes on these numbers:
 - **Afternoon baselines were lower** than the morning ones for every scenario (drawer 10.9% →
   5.6%, widgets 10.4% → 4.8%). The PLAN document's ranking used the morning numbers.
 
+## First opens and investigations (#21, #22)
+
+Interleaved A/B, 3 rounds. `drawer_first` and `folder_first` cold-start Evergreen before each
+repetition.
+
+| PR | Scenario | Before | After |
+|---|---|---|---|
+| #21 drawer kept INVISIBLE | first drawer open: p95 / p99 | 47 / 79 ms | **37 / 49 ms** |
+| #21 | first drawer open: layout stage of slow frames | 3.5 ms | **0.2 ms** |
+| #21 folder prewarm | first folder open: frames / janky / p95 | 79 / 38.4% / 65 ms | **55 / 27.5% / 55 ms** |
+| #21 | repeated folder open: janky | 3.9% | **1.4%** |
+| #22 | release the destroyed Launcher | – | bug fix, `smoke.sh` clean |
+
+What the trace and overdraw view showed (atrace `gfx view sched freq`, no setprop needed for
+atrace; `debug.hwui.overdraw` set only during the capture and cleared afterwards):
+
+- The first drawer open after a cold start spent 110 ms on the main thread: 86 ms in the list's
+  deferred first layout and 36 binds. Fixed by #21.
+- On the RenderThread, the long frames of the drawer, folder and menus are dominated by
+  `flush commands`, the GL driver issuing the frame's draw calls. That is driver CPU time on the
+  A53 cores rather than layout or uploads, and it is what the "GPU" stage in `framestats.py`
+  measures.
+- Overdraw: the empty home screen has none (only the status bar gradient adds a layer). The
+  drawer sheet is drawn twice per pixel and the header three times; the second full-sheet layer
+  was not identified (the sheet is drawn once by `ScrimView`, and no drawer view sets a
+  background). Open item.
+
 ## Experiments that were not merged
 
 | Change | Result | Decision |
