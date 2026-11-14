@@ -85,9 +85,42 @@ numbers are in `docs/perf/PLAN-tablet-pass.md`.
 The first two folder opens after a process start are 43% janky. `drawer_fling` is not valid on
 this tablet: its 36 apps fit on one screen.
 
+## Tablet pass (#12-#18)
+
+Interleaved A/B against `4211efc` with `tools/perf/ab.sh` and `scenario.sh`, 8 repetitions per
+scenario, measured on 2026-11-14 between 15:30 and 18:00.
+
+| PR | Scenario | Base | PR | Note |
+|---|---|---|---|---|
+| #12 return home | frames per return (launch intent) | 2 | **1** | the second frame was the At a Glance relayout |
+| #12 | first frame p50 (launch intent) | 72 ms | **58 ms** | |
+| #12 | main-thread wait before the frame (BACK) | ~10 ms | **~2 ms** | no feed bind in `onStart` |
+| #13 long-press menus | home menu: frames drawn / p95 / p99 | 172 / 30 / 87 ms | **103 / 23 / 36 ms** | 2 PR rounds (one blocked by Play Protect) |
+| #13 | icon menu: janky | 17.7% | **13.0%** | p99 71 → 80 ms (noise) |
+| #14 drawer | open/close: frames drawn | 423 | **352** | janky 5.6% → 5.9% (noise) |
+| #15 folder | janky / p95 | 7.6% / 21 ms | **4.9% / 16 ms** | |
+| #17 widgets | picker janky | 4.8% | 5.6% | noise; merged as removal of wasted work |
+
+All PR builds passed `smoke.sh` with no crashes. #16 has no A/B: it fixes bugs, and the
+accessibility fix was checked with `uiautomator dump`, which works on Evergreen again.
+
+#18 (tablet layout) changes what is on screen, so it was checked with screenshots, a migration
+test from the base build (all items and the dock kept) and three scenario passes; no regression
+beyond the usual range. The combined build (#12-#18) returned home in a single 46-52 ms frame.
+
+Notes on these numbers:
+
+- **The device has two performance states.** The home long-press menu gave 10% janky frames in
+  some runs and ~50% in others with the same build, with the GPU stage dominating the slow
+  frames. The morning baseline (59%) was taken in the slow state. Probably GPU frequency scaling;
+  not confirmed. Only compare interleaved runs.
+- **Afternoon baselines were lower** than the morning ones for every scenario (drawer 10.9% →
+  5.6%, widgets 10.4% → 4.8%). The PLAN document's ranking used the morning numbers.
+
 ## Experiments that were not merged
 
 | Change | Result | Decision |
 |---|---|---|
 | Remove `-dontoptimize` from `proguard.pro` (R8 full optimization) | APK 17.1 → 15.6 MB, PSS 112 → 107 MB. Cold start `verify` 1703 → 1722 ms (same), `speed` 1326 → 1371 ms (+3%, consistently slower). Drawer/search jank within noise. | Not merged: more risk (reflection in AOSP/SystemUI code) with no startup gain. |
+| Software widget previews below API 31 (drawn on the background thread instead of as hardware bitmaps on the RenderThread) | 2 interleaved rounds: widget picker 4.8% → 5.6% janky, p99 30 → 29 ms. Software bitmaps also live in the Java heap. | Dropped from #17. |
 | "Reduce visual effects" (EVG-E10): one label shadow pass instead of two, no extra blurred shadow pass on adaptive icons, on by default below API 31 | 3 interleaved rounds against main. Drawer jank 10.7% → 9.0% (noise). Search jank 12.9% → 15.3% (worse in all 3 rounds). Cold start 1667 / 1326 ms (unchanged). No visible difference on the home screen. | Not merged: no measurable gain. |

@@ -18,15 +18,14 @@
 #   idle           30 s of untouched home screen (the frame count should stay near 0)
 #
 # Tap targets are "x y" coordinates. The defaults fit a 1200x1920 portrait tablet with the default
-# Evergreen two-panel 4x5 layout. Override them with environment variables after a grid change:
-#   HOME_APP_XY    an app icon on the first home screen               (default: 1113 1390)
-#   DRAWER_APP_XY  an app in the open drawer                          (default: 996 265)
-#   FOLDER_XY      a folder on the first home screen                  (default: 85 1390)
+# Evergreen tablet layout (6x5 grid, 6-column drawer). Override them with environment variables:
+#   HOME_APP_XY    an app icon on the first home screen               (default: 688 1310)
+#   DRAWER_APP_XY  an app in the open drawer                          (default: 685 270)
+#   FOLDER_XY      a folder on the first home screen                  (default: 157 1310)
 #   WIDGETS_XY     the widgets entry of the home long-press menu      (default: 683 531)
 #   EMPTY_XY       empty space on the first home screen               (default: centre, 36% down)
 # Set one of them to an empty string to look the view up by label with `uiautomator dump` instead
 # (HOME_APP, DRAWER_APP, FOLDER, WIDGETS_ITEM; defaults: Ajustes, Calculadora, Google, Widgets).
-# On Android 10 that lookup crashes while Evergreen holds widget ids without a provider.
 # Other settings:
 #   OTHER_APP      `am start` arguments of the app used by home_*     (default: system Settings)
 #   REPS           repetitions per scenario                           (default: 8)
@@ -50,9 +49,9 @@ HOME_APP=${HOME_APP:-Ajustes}
 DRAWER_APP=${DRAWER_APP:-Calculadora}
 FOLDER=${FOLDER:-Google}
 WIDGETS_ITEM=${WIDGETS_ITEM:-Widgets}
-HOME_APP_XY=${HOME_APP_XY-"1113 1390"}
-DRAWER_APP_XY=${DRAWER_APP_XY-"996 265"}
-FOLDER_XY=${FOLDER_XY-"85 1390"}
+HOME_APP_XY=${HOME_APP_XY-"688 1310"}
+DRAWER_APP_XY=${DRAWER_APP_XY-"685 270"}
+FOLDER_XY=${FOLDER_XY-"157 1310"}
 WIDGETS_XY=${WIDGETS_XY-"683 531"}
 OTHER_APP=${OTHER_APP:-"-a android.settings.SETTINGS"}
 REPS=${REPS:-8}

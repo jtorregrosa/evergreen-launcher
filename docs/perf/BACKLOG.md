@@ -253,6 +253,12 @@ EVG-1 and EVG-2 barely move startup: the real wipe was caused by EVG-3b, which w
 | ID | Bug | Cause | Fix |
 |---|---|---|---|
 | EVG-B1 | Web suggestion rows in drawer search show an empty text on tablets | `search_result_small_icon_row.xml` used `dynamic_grid_edge_margin` as vertical padding; on sw720dp it is 27.59dp, so top+bottom padding (55dp) plus the title exceeded the 56dp row and the title was clipped | Drop the vertical padding (the block is already centered) |
+| EVG-B2 | Tablets below API 30 got the two-panel phone grid | `getRealBounds()` returned empty bounds below API 30, so `DisplayController` reported `TYPE_MULTI_DISPLAY` | Estimated bounds for the current rotation; one-time `TabletGridDefaults` migration (#18) |
+| EVG-B3 | Accessibility queries on the launcher window crash in `system_server` on Android 10 | Headless widget ids allocated but never bound | Delete ids that could not be bound (#16) |
+| EVG-B4 | At a Glance date ticker never cancelled; one more 1 Hz loop per return home | Function reference SAM-converted per call, so `removeCallbacks()` never matched | Single `Runnable`, minute ticks (#16) |
+| EVG-B5 | `MediaController` callbacks leaked on every stop | `onPause()` re-registered them | Unregister instead (#16) |
+| EVG-B6 | Dock search bar leaked the Activity on `recreate()` | Unscoped preference listeners | View-scoped listeners (#16) |
+| EVG-B7 | `subscribeBlocking` ran its callback twice | `onEach` before `drop(1)` | Compare with the last value (#16) |
 
 ## Implementation status
 
@@ -267,12 +273,23 @@ Merged into `perf/android10` (see `docs/perf/RESULTS.md` for the measurements):
 | #5 | EVG-5c; EVG-5 measured and rejected |
 | #6 | EVG-B1 (web suggestion rows clipped on tablets) |
 | #7 | EVG-10f |
+| #11 | Tablet pass plan and scripts (`docs/perf/PLAN-tablet-pass.md`) |
+| #12 | EVG-14 (feed client bound the Google app on every `onStart`), plan R1b-R1d (return home) |
+| #13 | Plan R3a-R3e (long-press menus) |
+| #14 | Plan R2a, R2b, R2d (drawer) |
+| #15 | EVG-17 (corrected), plan R4a, R4d (folder) |
+| #16 | EVG-B3 to EVG-B7 |
+| #17 | Plan R5b, R5c (widget picker, unused icon preload) |
+| #18 | EVG-B2, plan V1-V4 (tablet device type, grid, dock, drawer) |
 
 Still open, roughly in priority order:
+- Plan R2c: workspace hardware layer and system bar scrim during the drawer transition (needs Perfetto).
+- Plan R4b, R4c: folder reveal path and first-open warm-up.
+- Plan R5a: widget picker open frame (inflation, double bind). Not reproduced in the afternoon runs.
+- Plan V5-V7: folder look, motion review, corner radius family.
 - EVG-1b: confirm with a log first.
 - EVG-1e, EVG-1f: only relevant with an icon pack or system icon overrides.
 - EVG-15b: `onTrimMemory`.
-- EVG-14: feed client when the feed is disabled. No bind was observed on the tablet.
 - EVG-1d / EVG-21 (modest-device mode with lighter shadows): implemented and measured, no gain, so not merged. See RESULTS.md.
 - EVG-6b: systemic preference cache. `cachedValue()` exists; the remaining `firstBlocking()` calls are on cold paths.
 - EVG-8b/8c/8d: only with drawer folders or categories.
