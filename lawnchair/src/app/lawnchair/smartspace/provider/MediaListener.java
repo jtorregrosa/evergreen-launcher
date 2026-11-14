@@ -56,7 +56,10 @@ public class MediaListener extends MediaController.Callback {
     }
 
     public void onPause() {
-        updateTracking();
+        // Evergreen: updateTracking() registered callbacks on fresh MediaControllers right before
+        // this listener was dropped, leaking one callback per media session on every stop.
+        updateControllers(Collections.emptyList());
+        mTracking = null;
         mFlowCollector.stop();
     }
 

@@ -5,7 +5,6 @@ import android.content.Intent
 import android.content.IntentFilter
 import android.icu.text.DateFormat
 import android.icu.text.DisplayContext
-import android.os.SystemClock
 import android.text.format.DateFormat.is24HourFormat
 import android.util.AttributeSet
 import app.lawnchair.preferences2.PreferenceManager2
@@ -35,7 +34,11 @@ class IcuDateTextView @JvmOverloads constructor(
     private var calendar: SmartspaceCalendar? = null
     private lateinit var dateTimeOptions: DateTimeOptions
     private var formatterFunction: FormatterFunction? = null
-    private val ticker = this::onTimeTick
+    // Evergreen: must be a single Runnable. A function reference is wrapped in a new Runnable at
+    // every use, so removeCallbacks(ticker) never matched what postAtTime(ticker) had queued:
+    // the tick was never cancelled and every visibility change started another endless loop,
+    // also in the background.
+    private val ticker = Runnable { onTimeTick() }
 
     init {
         repeatOnAttached {
@@ -142,15 +145,17 @@ class IcuDateTextView @JvmOverloads constructor(
 
     private fun onTimeTick() {
         onTimeChanged(false)
-        val uptimeMillis: Long = SystemClock.uptimeMillis()
-        handler?.postAtTime(ticker, uptimeMillis + (1000 - uptimeMillis % 1000))
+        // Evergreen: the text has minute resolution at most, so tick on the wall-clock minute
+        // instead of every second.
+        val millis = System.currentTimeMillis()
+        handler?.postDelayed(ticker, 60_000L - millis % 60_000L)
     }
 
     override fun onVisibilityAggregated(isVisible: Boolean) {
         super.onVisibilityAggregated(isVisible)
         handler?.removeCallbacks(ticker)
         if (isVisible) {
-            ticker()
+            ticker.run()
         }
     }
 }

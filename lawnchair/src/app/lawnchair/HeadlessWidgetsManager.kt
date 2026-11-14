@@ -120,18 +120,34 @@ class HeadlessWidgetsManager(private val context: Context) : SafeCloseable {
                 }
 
                 widgetId = host.allocateAppWidgetId()
-                widgetManager.bindAppWidgetIdIfAllowed(
+                val bound = widgetManager.bindAppWidgetIdIfAllowed(
                     widgetId,
                     info.profile,
                     info.provider,
                     null,
                 )
+                if (!bound) {
+                    // Evergreen: an allocated id without a provider makes Android 10's
+                    // AppWidgetService throw in getHostedWidgetPackages(), which breaks every
+                    // accessibility query on the launcher window (TalkBack, uiautomator).
+                    // Allocate it again only when the user starts the bind flow.
+                    host.deleteAppWidgetId(widgetId)
+                    widgetId = -1
+                }
             }
 
             prefs.edit { putInt(prefKey, widgetId) }
         }
 
-        fun getBindIntent() = Intent(AppWidgetManager.ACTION_APPWIDGET_BIND)
+        fun getBindIntent(): Intent {
+            if (widgetId == -1) {
+                widgetId = host.allocateAppWidgetId()
+                prefs.edit { putInt(prefKey, widgetId) }
+            }
+            return createBindIntent()
+        }
+
+        private fun createBindIntent() = Intent(AppWidgetManager.ACTION_APPWIDGET_BIND)
             .putExtra(AppWidgetManager.EXTRA_APPWIDGET_ID, widgetId)
             .putExtra(AppWidgetManager.EXTRA_APPWIDGET_PROVIDER, info.provider)
     }
