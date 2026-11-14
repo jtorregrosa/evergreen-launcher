@@ -234,18 +234,19 @@ adb shell dumpsys meminfo $PKG; adb logcat -b events | grep -E "am_proc_died|am_
 adb shell setprop debug.hwui.overdraw show
 ```
 
-**Tabla de referencia** (rellenar una vez por versión):
+**Tabla de referencia:** Lenovo TB-X606F, APK release y 8 arranques en frío por celda, con `am start -W -n` (Lawnchair sigue como launcher por defecto y la pantalla, encendida y desbloqueada). Se muestra la mediana con el rango entre paréntesis.
 
-| Métrica | Lawnchair 15b3 de serie | Evergreen base | Después de EVG-1 | … |
+| Métrica | Lawnchair 15b3 de serie | Evergreen base (`20a7ccd`) | + EVG-1/EVG-2 (`d38d7bb`) | + EVG-3b (`acbb5fd`) |
 |---|---|---|---|---|
-| `am start -W` TotalTime, mediana, `speed-profile` | **≈ 2,32 s** | | | |
-| Igual, en `verify` | — | | | |
-| TTFD (`Fully drawn`) | — | | | |
-| Fallbacks de iconos por arranque | **15-30** | | | |
-| Fotogramas lentos (jank) en el scroll del cajón, % y p90/p99 | — | | | |
-| Fotogramas lentos al pasar 20 páginas | — | | | |
-| Desde la tecla hasta los resultados de apps (ms) | — | | | |
-| PSS en primer plano y en segundo plano | ≈ 187 MB | | | |
+| TotalTime en `verify` (sin AOT) | — | **2287 ms** (2165–2606) | 2216 ms (2144–2323) | **1872 ms** (1819–1922), **−18 %** |
+| TotalTime en `speed` (AOT completo) | ≈ 2,32 s (`speed-profile`) | **1700 ms** (1649–2168) | 1656 ms (1639–1667) | **1421 ms** (1396–1436), **−16 %** |
+| TTFD (`Fully drawn`) | — | igual a TotalTime | igual a TotalTime | igual a TotalTime |
+| Fallbacks de iconos por arranque | 15–30 | 14 | 14 | **0** |
+| PSS al terminar la tanda (`speed`) | ≈ 187 MB | 204 MB | 211 MB | 111 MB (dato orientativo, de una sola muestra) |
+| Fotogramas lentos (jank) en el scroll del cajón | — | | | |
+| Desde la tecla hasta los resultados de apps | — | | | |
+
+EVG-1 y EVG-2 apenas mueven el arranque: el borrado real lo provocaba EVG-3b, que tapaba el arreglo de las columnas. Con EVG-3b la caché de iconos por fin se lee desde la BD.
 
 ## 6. Descartados o corregidos
 
