@@ -3,6 +3,7 @@ package app.lawnchair
 import android.os.CancellationSignal
 import android.view.WindowInsets
 import androidx.core.view.WindowInsetsCompat
+import androidx.lifecycle.lifecycleScope
 import app.lawnchair.preferences2.PreferenceManager2
 import com.android.app.animation.Interpolators
 import com.android.launcher3.LauncherState
@@ -14,12 +15,11 @@ import com.android.launcher3.anim.PendingAnimation
 import com.android.launcher3.statemanager.StateManager
 import com.android.launcher3.states.StateAnimationConfig
 import com.patrykmichalik.opto.core.onEach
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
 
 class SearchBarStateHandler(private val launcher: LawnchairLauncher) : StateManager.StateHandler<LauncherState> {
 
-    private val coroutineScope = CoroutineScope(Dispatchers.IO)
+    // Evergreen: was CoroutineScope(Dispatchers.IO), never cancelled, which leaked the launcher.
+    private val coroutineScope = launcher.lifecycleScope
     private val preferenceManager2 = PreferenceManager2.getInstance(launcher)
     private var autoShowKeyboard = false
 

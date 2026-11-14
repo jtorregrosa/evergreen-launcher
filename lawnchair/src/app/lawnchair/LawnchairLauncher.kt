@@ -347,7 +347,7 @@ class LawnchairLauncher : QuickstepLauncher() {
     ): OptionsPopupView<T>? where T : Context?, T : ActivityContext? {
         if (activityContext == null) return null
 
-        val isEmpty = WallpaperService.INSTANCE.get(this).getTopWallpapers().isEmpty()
+        val isEmpty = !WallpaperService.INSTANCE.get(this).hasTopWallpapers()
         val layout = if (isEmpty) R.layout.longpress_options_menu else R.layout.wallpaper_options_popup
 
         val popup = activityContext.layoutInflater.inflate(layout, activityContext.dragLayer, false) as OptionsPopupView<T>
@@ -489,6 +489,16 @@ class LawnchairLauncher : QuickstepLauncher() {
                 PROFILE_INSTALL_DELAY_MS,
             )
         }
+    }
+
+    override fun onStart() {
+        super.onStart()
+        HeadlessWidgetsManager.INSTANCE.getNoCreate()?.setListening(true)
+    }
+
+    override fun onStop() {
+        super.onStop()
+        HeadlessWidgetsManager.INSTANCE.getNoCreate()?.setListening(false)
     }
 
     override fun onDestroy() {
