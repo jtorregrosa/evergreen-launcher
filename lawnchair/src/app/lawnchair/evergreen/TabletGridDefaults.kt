@@ -51,8 +51,10 @@ object TabletGridDefaults {
         if (context.resources.configuration.smallestScreenWidthDp < 600) return
         if (sp.contains(KEY_COLUMNS) || sp.contains(KEY_ROWS) || sp.contains(KEY_HOTSEAT)) return
 
-        val rows = prefs.workspaceRows.get()
-        val oldName = "launcher_${rows}_${prefs.workspaceColumns.get()}_${prefs.hotseatColumns.get()}.db"
+        // Read the defaults, not the preference objects: get() caches the value in memory, and
+        // the device profile would then keep the old grid after the values below are written.
+        val rows = prefs.workspaceRows.defaultValue
+        val oldName = "launcher_${rows}_${prefs.workspaceColumns.defaultValue}_${prefs.hotseatColumns.defaultValue}.db"
         val newName = "launcher_${rows}_${TABLET_COLUMNS}_$TABLET_HOTSEAT.db"
         val oldDb = context.getDatabasePath(oldName)
         val newDb = context.getDatabasePath(newName)
