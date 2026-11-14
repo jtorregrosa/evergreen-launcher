@@ -109,7 +109,9 @@ class WallpaperService(val context: Context) : SafeCloseable {
     fun hasTopWallpapers(): Boolean {
         val cached = hasTopWallpapersCache
         Executors.UI_HELPER_EXECUTOR.execute { getTopWallpapers() }
-        return cached ?: getTopWallpapers().isNotEmpty()
+        // Evergreen: no blocking Room query on the first long-press either; the background
+        // refresh above corrects the answer for the next one.
+        return cached ?: false
     }
 
     private fun deleteWallpaperFile(imagePath: String) {

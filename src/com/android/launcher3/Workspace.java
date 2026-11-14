@@ -1929,7 +1929,8 @@ public class Workspace<T extends View & PageIndicator> extends PagedView<T>
             }
         }
 
-        boolean lockHomeScreen = PreferenceExtensionsKt.firstBlocking(mPreferenceManager2.getLockHomeScreen());
+        // Evergreen: cached value; this runs on every icon long-press.
+        boolean lockHomeScreen = mPreferenceManager2.cachedValue(mPreferenceManager2.getLockHomeScreen());
         if (lockHomeScreen) {
             child.setVisibility(View.VISIBLE);
 

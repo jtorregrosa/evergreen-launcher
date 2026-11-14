@@ -325,7 +325,8 @@ class LawnchairLauncher : QuickstepLauncher() {
     }
 
     override fun showDefaultOptions(x: Float, y: Float) {
-        val showWallpaperCarousel = "+carousel" in preferenceManager2.launcherPopupOrder.firstBlocking()
+        // Evergreen: cached value; this runs on every long-press of the home screen.
+        val showWallpaperCarousel = "+carousel" in preferenceManager2.cachedValue(preferenceManager2.launcherPopupOrder)
 
         if (showWallpaperCarousel) {
             show<LawnchairLauncher>(
