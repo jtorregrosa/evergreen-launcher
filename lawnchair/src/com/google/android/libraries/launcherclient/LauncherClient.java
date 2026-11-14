@@ -226,7 +226,13 @@ public class LauncherClient {
     }
 
     private void connect() {
-        if (!mDestroyed && (!mLauncherService.connect() || !mBaseService.connect())) {
+        // Evergreen: with the feed disabled there is nothing to show. Binding anyway cost 3-6
+        // binder calls in every onStart and kept the Google app at high priority
+        // (BIND_AUTO_CREATE | BIND_IMPORTANT). setEnableFeed() reconnects when it is turned on.
+        if ((mFlags & 1) == 0) {
+            return;
+        }
+        if (!mDestroyed &&(!mLauncherService.connect() || !mBaseService.connect())) {
             mActivity.runOnUiThread(() -> setServiceState(0));
         }
     }

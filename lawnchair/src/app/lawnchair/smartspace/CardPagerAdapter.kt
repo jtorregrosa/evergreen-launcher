@@ -17,6 +17,10 @@ class CardPagerAdapter(context: Context) : PagerAdapter() {
     private var smartspaceTargets = targets
     private val holders = SparseArray<ViewHolder>()
 
+    // Evergreen: lets the view skip updates that change nothing, such as the replay on every
+    // return home.
+    fun hasTargets(newTargets: List<SmartspaceTarget>) = targets == newTargets
+
     fun setTargets(newTargets: List<SmartspaceTarget>) {
         targets.clear()
         targets.addAll(newTargets)
@@ -46,7 +50,8 @@ class CardPagerAdapter(context: Context) : PagerAdapter() {
     override fun getItemPosition(obj: Any): Int {
         val viewHolder = obj as ViewHolder
         val target = getTargetAtPosition(viewHolder.position)
-        if (viewHolder.target === target) {
+        // Evergreen: compare by value. Providers emit new but equal targets on every restart.
+        if (viewHolder.target == target) {
             return POSITION_UNCHANGED
         }
         if (target == null ||
