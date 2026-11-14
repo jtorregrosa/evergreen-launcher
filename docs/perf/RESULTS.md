@@ -62,6 +62,29 @@ the tablet layout (EVG-8). The remaining search jank is the IME and padding anim
 | Drawer search typing, janky frames | 29.6% (PR #1) | 15.2% | **−49%** |
 | Evergreen widget hosts listening in background | 3 | 0 | |
 
+## Everyday interactions (`scenario.sh`)
+
+Baseline for the tablet pass, `evergreen` at `4211efc`, 8 repetitions per scenario (4 for
+widgets). The same build measured 1670 ms (`verify`) and 1330 ms (`speed`) cold start, and 7.4% /
+14.1% janky frames for drawer / search in `interact.sh`. The analysis and the plan built on these
+numbers are in `docs/perf/PLAN-tablet-pass.md`.
+
+| Scenario | Frames | Janky | p50 / p95 / p99 | Dominant stage of the slow frames |
+|---|---|---|---|---|
+| Return home with a launch intent (as HOME does) | 16 | 56% | 52 / 68 / 68 ms | main thread wait (~40 ms), then layout (~10 ms) |
+| Return home by closing the app with BACK | 16 | 56% | 24 / 37 / 37 ms | layout (~10 ms) |
+| Open an app from the home screen | 24 | 21% | 13 / 25 / 28 ms | main thread wait |
+| Open an app from the drawer | 24 | 29% | 11 / 41 / 54 ms | main thread wait |
+| Open and close the drawer | 430 | 10.9% | 14 / 29 / 36 ms | GPU; one ~35 ms frame at the end of each close |
+| Open and close a folder | 113 | 8.9% | 13 / 20 / 32 ms | GPU |
+| Home long-press menu | 145 | 59.3% | 30 / 79 / 194 ms | GPU and RenderThread queue |
+| Icon long-press menu | 506 | 19.6% | 13 / 33 / 73 ms | GPU and RenderThread queue |
+| Widget picker: open, scroll, close | 462 | 10.4% | 14 / 33 / 107 ms | layout and main thread wait on open (up to 334 ms) |
+| Idle home screen, 30 s | 0 | – | – | – |
+
+The first two folder opens after a process start are 43% janky. `drawer_fling` is not valid on
+this tablet: its 36 apps fit on one screen.
+
 ## Experiments that were not merged
 
 | Change | Result | Decision |
