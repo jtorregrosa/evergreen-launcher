@@ -254,6 +254,30 @@ EVG-1 and EVG-2 barely move startup: the real wipe was caused by EVG-3b, which w
 |---|---|---|---|
 | EVG-B1 | Web suggestion rows in drawer search show an empty text on tablets | `search_result_small_icon_row.xml` used `dynamic_grid_edge_margin` as vertical padding; on sw720dp it is 27.59dp, so top+bottom padding (55dp) plus the title exceeded the 56dp row and the title was clipped | Drop the vertical padding (the block is already centered) |
 
+## Implementation status
+
+Merged into `perf/android10` (see `docs/perf/RESULTS.md` for the measurements):
+
+| PR | Items |
+|---|---|
+| #1 | EVG-01, EVG-02, EVG-1, EVG-2, EVG-3b |
+| #2 | EVG-6a, EVG-9, EVG-10, EVG-16, EVG-3h, EVG-4 |
+| #3 | EVG-12, EVG-13, EVG-15, EVG-1c, EVG-3, EVG-3d, EVG-7, EVG-10b, EVG-10e |
+| #4 | EVG-8 (also covers EVG-22) |
+| #5 | EVG-5c; EVG-5 measured and rejected |
+| #6 | EVG-B1 (web suggestion rows clipped on tablets) |
+| #7 | EVG-10f |
+
+Still open, roughly in priority order:
+- EVG-1b: confirm with a log first.
+- EVG-1e, EVG-1f: only relevant with an icon pack or system icon overrides.
+- EVG-15b: `onTrimMemory`.
+- EVG-14: feed client when the feed is disabled. No bind was observed on the tablet.
+- EVG-1d / EVG-21 and the rest of the modest-device mode: visual changes, so they need a decision.
+- EVG-6b: systemic preference cache. `cachedValue()` exists; the remaining `firstBlocking()` calls are on cold paths.
+- EVG-8b/8c/8d: only with drawer folders or categories.
+- The P3 items.
+
 ## 6. Discarded or corrected
 
 | Finding | Reason |
