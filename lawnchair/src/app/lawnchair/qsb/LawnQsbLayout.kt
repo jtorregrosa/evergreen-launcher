@@ -129,8 +129,10 @@ class LawnQsbLayout(context: Context, attrs: AttributeSet?) : FrameLayout(contex
             subscribeGoogleSearchWidget()
         }
 
-        preferenceManager.hotseatQsbAlpha.subscribeChanges(this::setUpBackground)
-        preferenceManager.hotseatQsbStrokeWidth.subscribeChanges(this::setUpBackground)
+        // Evergreen: tie the listeners to the view. The unscoped overload was never closed and
+        // kept this layout and its Activity alive after every recreate().
+        preferenceManager.hotseatQsbAlpha.subscribeChanges(this) { setUpBackground() }
+        preferenceManager.hotseatQsbStrokeWidth.subscribeChanges(this) { setUpBackground() }
     }
 
     override fun onMeasure(widthMeasureSpec: Int, heightMeasureSpec: Int) {
