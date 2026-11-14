@@ -37,8 +37,11 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
+import java.util.concurrent.atomic.AtomicInteger
+import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.firstOrNull
+import kotlinx.coroutines.flow.onStart
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
@@ -60,15 +63,28 @@ class LawnchairLocalSearchAlgorithm(context: Context) : LawnchairSearchAlgorithm
         WebSuggestionProvider,
     )
 
+    // Evergreen: incremented on every query so queued model tasks for stale queries can bail out.
+    private val searchSequence = AtomicInteger()
+
     override fun doSearch(query: String, callback: SearchCallback<BaseAllAppsAdapter.AdapterItem>) {
+        val sequence = searchSequence.incrementAndGet()
         appState.model.enqueueModelUpdateTask { _, _, apps ->
+            if (sequence != searchSequence.get()) return@enqueueModelUpdateTask
             val appResults = appSearchProvider.search(context, query, apps)
             val shortcutResults = shortcutSearchProvider.search(context, appResults)
 
             currentJob?.cancel()
             currentJob = coroutineScope.launch {
+                // Evergreen: combine() emits only after every provider has emitted once, so app
+                // results used to wait for web suggestions (up to the 1 s timeout). Seed each
+                // provider with an empty list so apps show immediately and the rest stream in;
+                // also keep one failing provider from breaking the whole search.
                 val nonAppProvidersFlow = combine(
-                    searchProviders.map { it.search(context, query) },
+                    searchProviders.map { provider ->
+                        provider.search(context, query)
+                            .onStart { emit(emptyList()) }
+                            .catch { emit(emptyList()) }
+                    },
                 ) { resultsArray ->
                     resultsArray.toList().flatten()
                 }

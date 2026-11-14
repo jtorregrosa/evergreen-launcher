@@ -1,126 +1,126 @@
-# Revisión de rendimiento de Evergreen y backlog para dispositivos antiguos o con pocos recursos
+# Evergreen performance review and backlog for old or low-resource devices
 
-## Contexto
+## Context
 
-- Repositorio: Evergreen Launcher, en esta carpeta, rama `perf/android10`.
-  - Es un fork de Lawnchair 15 (tag `v15.0.0-beta3.0`), basado a su vez en AOSP Launcher3 con Quickstep.
-  - El código propio de Lawnchair está en `lawnchair/src/app/lawnchair`.
-  - El de AOSP está en `src/`, `quickstep/src`, `systemUI/` y `wmshell/`.
-  - Las librerías de iconos están en `platform_frameworks_libs_systemui/` (por ejemplo, `iconloaderlib`).
-- Dispositivo objetivo: tablet antigua con Android 10 (API 29).
-  - CPU de gama baja, 2-3 GB de RAM, almacenamiento eMMC.
-  - Pantalla grande, por lo que hay muchos iconos visibles a la vez.
-  - El objetivo secundario es cualquier dispositivo con API 26-30 o con `ActivityManager.isLowRamDevice()`.
-- Restricciones de API 29 que hay que tener en cuenta:
-  - No existe `RenderEffect` ni el desenfoque de ventanas (`BlurUtils`/`DepthController` requieren R o superior).
-  - El modelo de compilación de ART depende de que se instale un perfil, porque el APK no viene de Play.
-  - Quickstep se activa con `QUICKSTEP_MIN_SDK = 29`.
-- Punto de partida: `PERF_ANDROID10.md` contiene una auditoría previa (unos 30 hallazgos con fichero y línea).
-  - Úsala como semilla, pero **verifica cada hallazgo contra el código actual** antes de pasarlo al backlog.
-  - Descarta o corrige los que no se sostengan.
+- Repository: Evergreen Launcher, in this folder, branch `perf/android10`.
+  - It is a fork of Lawnchair 15 (tag `v15.0.0-beta3.0`), itself based on AOSP Launcher3 with Quickstep.
+  - Lawnchair's own code is in `lawnchair/src/app/lawnchair`.
+  - The AOSP code is in `src/`, `quickstep/src`, `systemUI/` and `wmshell/`.
+  - The icon libraries are in `platform_frameworks_libs_systemui/` (for example, `iconloaderlib`).
+- Target device: old tablet with Android 10 (API 29).
+  - Low-end CPU, 2-3 GB of RAM, eMMC storage.
+  - Large screen, so many icons are visible at once.
+  - The secondary target is any device with API 26-30 or with `ActivityManager.isLowRamDevice()`.
+- API 29 constraints to keep in mind:
+  - There is no `RenderEffect` and no window blur (`BlurUtils`/`DepthController` require R or higher).
+  - ART's compilation model depends on a profile being installed, because the APK does not come from Play.
+  - Quickstep is enabled with `QUICKSTEP_MIN_SDK = 29`.
+- Starting point: `PERF_ANDROID10.md` contains a previous audit (about 30 findings with file and line).
+  - Use it as a seed, but **verify each finding against the current code** before moving it to the backlog.
+  - Discard or correct the ones that do not hold up.
 
-## Objetivo
+## Goal
 
-Hacer una revisión exhaustiva, **solo de lectura (no edites código)**, y producir un backlog priorizado y accionable de mejoras de rendimiento para este perfil de dispositivo.
+Do an exhaustive, **read-only (do not edit code)** review and produce a prioritized, actionable backlog of performance improvements for this device profile.
 
-El backlog tiene dos destinos:
-- convertirse en issues de GitHub;
-- implementarse en PRs pequeños, cada uno medible por separado.
+The backlog has two destinations:
+- to become GitHub issues;
+- to be implemented in small PRs, each one measurable on its own.
 
-## Cómo trabajar
+## How to work
 
-### Fase 1. Revisión en paralelo con subagentes
+### Phase 1. Parallel review with subagents
 
-Lanza en un solo mensaje un subagente `Explore` por cada área de la tabla, con la exhaustividad "very thorough". El prompt de cada subagente debe incluir:
-- el contexto de arriba;
-- su área y las preguntas guía;
-- la regla de evidencia;
-- el formato de hallazgo.
+In a single message, launch one `Explore` subagent per area in the table, with "very thorough" thoroughness. Each subagent's prompt must include:
+- the context above;
+- its area and the guiding questions;
+- the evidence rule;
+- the finding format.
 
-Ningún subagente edita ficheros.
+No subagent edits files.
 
-| Área | Preguntas guía |
+| Area | Guiding questions |
 |------|----------------|
-| A. Arranque en frío y proceso | Qué se ejecuta en `MainProcessInitializer`, `LawnchairApp`, `LauncherAppState`, `LawnchairLauncher.onCreate`/`onResume`, `LoaderTask` y en los providers. Qué es trabajo anticipado que podría ser perezoso. Si el baseline profile y ProfileInstaller llegan realmente a ART. |
-| B. Hilo principal y almacenamiento | Usos de `firstBlocking`/`runBlocking`/`setBlocking` y de SharedPreferences, DataStore, Room y ficheros en el hilo principal. Con qué frecuencia se llama a cada uno: arranque, por frame, por toque o por icono. Llamadas binder síncronas (PackageManager, AppWidgetManager, ShortcutManager…). |
-| C. Iconos y paquetes de iconos | Validez e invalidación de la caché de iconos, parseo de `appfilter`, iconos temáticos, sombras y blur por software, tamaño de bitmaps, hilos implicados, iconos de reloj y receivers que fuerzan actualizaciones. |
-| D. Cajón, escritorio y scroll | Configuración de RecyclerView (pool, prefetch, `setHasFixedSize`), reciclado de carpetas y categorías, overdraw en tablet, coste de `onDraw`/`onLayout` en `BubbleTextView`/`CellLayout`/`Workspace`, asignaciones de memoria por frame, coste de arrastrar y reordenar. |
-| E. Búsqueda | Hilos, debounce y cancelación, coste del fuzzy matching, proveedores (apps, contactos, ficheros, ajustes, web, calculadora) y si alguno bloquea los resultados de apps, IPC y consultas MediaStore por cada pulsación. |
-| F. Animaciones, transiciones y Quickstep en API 29 | Capas por software (`setLayerType`), propiedades que provocan layout durante las animaciones, animaciones de cierre de apps, recientes y QuickSwitch en 29, `DepthController`, springs, widgets que se animan. |
-| G. Memoria y bajo consumo de RAM | Comportamiento en `onTrimMemory`/`onLowMemory`, tamaño de las cachés (iconos, widgets, previews, fuentes), retención de vistas y fugas (listeners que no se desregistran), coste de recrear tras una muerte por poca memoria, uso de `isLowRamDevice`. |
-| H. Trabajo en segundo plano y batería | Receivers dinámicos y su frecuencia (TIME_TICK, cambios de paquete…), WorkManager y alarmas, smartspace, tiempo y feed, peticiones de red (`lawnchair.app`, GitHub, sugerencias web), wakeups. |
-| I. Build y empaquetado | R8 y minify en release, reglas de proguard, `profileinstaller`, `baselineProfiles` por variante, `debuggable`/`profileable`, recursos y ABIs, `coreLibraryDesugaring`, uso de Compose fuera de los ajustes. |
+| A. Cold start and process | What runs in `MainProcessInitializer`, `LawnchairApp`, `LauncherAppState`, `LawnchairLauncher.onCreate`/`onResume`, `LoaderTask` and in the providers. What is eager work that could be lazy. Whether the baseline profile and ProfileInstaller actually reach ART. |
+| B. Main thread and storage | Uses of `firstBlocking`/`runBlocking`/`setBlocking` and of SharedPreferences, DataStore, Room and files on the main thread. How often each one is called: startup, per frame, per touch or per icon. Synchronous binder calls (PackageManager, AppWidgetManager, ShortcutManager…). |
+| C. Icons and icon packs | Validity and invalidation of the icon cache, `appfilter` parsing, themed icons, software shadows and blur, bitmap sizes, threads involved, clock icons and receivers that force updates. |
+| D. Drawer, desktop and scrolling | RecyclerView configuration (pool, prefetch, `setHasFixedSize`), folder and category recycling, overdraw on tablet, cost of `onDraw`/`onLayout` in `BubbleTextView`/`CellLayout`/`Workspace`, per-frame memory allocations, cost of dragging and reordering. |
+| E. Search | Threads, debounce and cancellation, cost of fuzzy matching, providers (apps, contacts, files, settings, web, calculator) and whether any of them blocks app results, IPC and MediaStore queries per keystroke. |
+| F. Animations, transitions and Quickstep on API 29 | Software layers (`setLayerType`), properties that trigger layout during animations, app close animations, recents and QuickSwitch on 29, `DepthController`, springs, animated widgets. |
+| G. Memory and low RAM | Behavior in `onTrimMemory`/`onLowMemory`, cache sizes (icons, widgets, previews, fonts), view retention and leaks (listeners that are not unregistered), cost of recreating after a low-memory kill, use of `isLowRamDevice`. |
+| H. Background work and battery | Dynamic receivers and their frequency (TIME_TICK, package changes…), WorkManager and alarms, smartspace, weather and feed, network requests (`lawnchair.app`, GitHub, web suggestions), wakeups. |
+| I. Build and packaging | R8 and minify in release, proguard rules, `profileinstaller`, `baselineProfiles` per variant, `debuggable`/`profileable`, resources and ABIs, `coreLibraryDesugaring`, use of Compose outside settings. |
 
-**Regla de evidencia.** Cada hallazgo debe citar `ruta:línea` y un extracto breve que el subagente haya leído de verdad. Si la conclusión depende de comportamiento en tiempo de ejecución que no se puede ver en el código, márcalo como `HIPÓTESIS` y di qué medición lo confirmaría. Nada de hallazgos genéricos del tipo "usar coroutines".
+**Evidence rule.** Each finding must cite `path:line` and a short excerpt that the subagent has actually read. If the conclusion depends on runtime behavior that cannot be seen in the code, mark it as `HYPOTHESIS` and say which measurement would confirm it. No generic findings like "use coroutines".
 
-**Formato de hallazgo de cada subagente** (devolver como máximo unos 1200 palabras):
+**Finding format for each subagent** (return at most about 1200 words):
 ```
-- id: <ÁREA>-<n>
-  título: <una línea>
-  evidencia: <ruta:línea> — <extracto o descripción precisa>
-  frecuencia: arranque | por frame | por toque | por pulsación | por icono | periódica | rara
-  por qué duele en API 29 / poca RAM: <mecanismo concreto>
-  propuesta: <cambio concreto>
-  impacto: alto | medio | bajo   riesgo: alto | medio | bajo   esfuerzo: S | M | L
-  estado: CONFIRMADO | HIPÓTESIS
+- id: <AREA>-<n>
+  title: <one line>
+  evidence: <path:line> — <excerpt or precise description>
+  frequency: startup | per frame | per touch | per keystroke | per icon | periodic | rare
+  why it hurts on API 29 / low RAM: <concrete mechanism>
+  proposal: <concrete change>
+  impact: high | medium | low   risk: high | medium | low   effort: S | M | L
+  status: CONFIRMED | HYPOTHESIS
 ```
 
-### Fase 2. Verificación adversarial
+### Phase 2. Adversarial verification
 
-Cuando vuelvan los subagentes:
+When the subagents come back:
 
-1. **Deduplica.** Junta los hallazgos repetidos entre áreas, sobre todo los de B, que aparecen en casi todas.
-2. **Verifica.** Para cada hallazgo de impacto alto o medio, lanza un subagente verificador por grupo de unos 5 hallazgos. Su encargo es intentar **refutarlos** leyendo el código:
-   - ¿la ruta se ejecuta de verdad?
-   - ¿la frecuencia es la que se dice?
-   - ¿hay ya una caché o una guarda que lo evita?
+1. **Deduplicate.** Merge findings repeated across areas, especially those from B, which show up in almost all of them.
+2. **Verify.** For each high- or medium-impact finding, launch one verifier subagent per group of about 5 findings. Its job is to try to **refute** them by reading the code:
+   - does the path actually run?
+   - is the frequency what is claimed?
+   - is there already a cache or a guard that prevents it?
 
-   Su veredicto debe ser `CONFIRMADO`, `REFUTADO` o `HIPÓTESIS`, con su propia cita.
-3. **Descarta** los refutados y anota por qué en una sección aparte.
-4. **Comprueba los valores por defecto.** Para cada hallazgo, mira el valor por defecto del ajuste implicado (por ejemplo, en `lawnchair/res/values/config.xml`). No es lo mismo un problema que afecta a todos los usuarios que uno que solo afecta a quien activa una opción.
+   Its verdict must be `CONFIRMED`, `REFUTED` or `HYPOTHESIS`, with its own citation.
+3. **Discard** the refuted ones and note why in a separate section.
+4. **Check the default values.** For each finding, look at the default value of the setting involved (for example, in `lawnchair/res/values/config.xml`). A problem that affects all users is not the same as one that only affects whoever enables an option.
 
-### Fase 3. Backlog
+### Phase 3. Backlog
 
-Escribe `docs/perf/BACKLOG.md` (y opcionalmente `docs/perf/backlog.csv` para importar como issues) en español, con esta estructura.
+Write `docs/perf/BACKLOG.md` (and optionally `docs/perf/backlog.csv` to import as issues) in English, with this structure.
 
-1. **Resumen.** Unas 10 líneas con los 5 problemas de más peso y el orden de ataque recomendado.
-2. **Épicas.**
-   - EVG-E1: Arranque en frío.
-   - EVG-E2: Hilo principal y almacenamiento.
-   - EVG-E3: Iconos.
-   - EVG-E4: Fluidez del cajón y del escritorio.
-   - EVG-E5: Búsqueda.
-   - EVG-E6: Animaciones.
-   - EVG-E7: Memoria y bajo consumo de RAM.
-   - EVG-E8: Segundo plano y batería.
-   - EVG-E9: Build y perfiles.
-   - EVG-E10: Modo "dispositivo modesto". Es un conjunto de valores por defecto que se aplican cuando `isLowRamDevice` es cierto o el SDK es menor de 31, configurable desde los ajustes.
-3. **Ítems.** Una tabla por épica, ordenada por prioridad = impacto / (riesgo × esfuerzo). Cada ítem lleva:
-   - `ID` (EVG-123), título, épica, prioridad P0-P3, impacto, riesgo, esfuerzo S/M/L;
-   - evidencia (`ruta:línea`) y estado (CONFIRMADO/HIPÓTESIS);
-   - **propuesta técnica** concreta;
-   - **criterio de aceptación medible**, por ejemplo "TotalTime de `am start -W` −20 % en frío en estado `verify`" o "0 llamadas `firstBlocking` en `updateHeaderScroll`";
-   - **cómo medirlo** (comando exacto);
-   - dependencias entre ítems y si cambia algo visible o algún valor por defecto (y, en ese caso, si va detrás del modo "dispositivo modesto").
-4. **Ganancias rápidas.** Ítems P0/P1 con esfuerzo S y riesgo bajo, pensados para el primer PR.
-5. **Plan de medición base.** Lo que hay que medir antes de tocar nada en la tablet:
-   - `am start -W` en los estados de compilación `verify` y `speed-profile`;
-   - Perfetto en Android 10 (`setprop persist.traced.enable 1`) con las categorías y los escenarios concretos;
-   - `dumpsys gfxinfo` con swipes automatizados;
+1. **Summary.** About 10 lines with the 5 heaviest problems and the recommended order of attack.
+2. **Epics.**
+   - EVG-E1: Cold start.
+   - EVG-E2: Main thread and storage.
+   - EVG-E3: Icons.
+   - EVG-E4: Drawer and desktop smoothness.
+   - EVG-E5: Search.
+   - EVG-E6: Animations.
+   - EVG-E7: Memory and low RAM.
+   - EVG-E8: Background and battery.
+   - EVG-E9: Build and profiles.
+   - EVG-E10: "Modest device" mode. It is a set of default values applied when `isLowRamDevice` is true or the SDK is lower than 31, configurable from the settings.
+3. **Items.** One table per epic, sorted by priority = impact / (risk × effort). Each item has:
+   - `ID` (EVG-123), title, epic, priority P0-P3, impact, risk, effort S/M/L;
+   - evidence (`path:line`) and status (CONFIRMED/HYPOTHESIS);
+   - a concrete **technical proposal**;
+   - a **measurable acceptance criterion**, for example "`am start -W` TotalTime −20 % cold in `verify` state" or "0 `firstBlocking` calls in `updateHeaderScroll`";
+   - **how to measure it** (exact command);
+   - dependencies between items and whether it changes anything visible or any default value (and, if so, whether it goes behind "modest device" mode).
+4. **Quick wins.** P0/P1 items with effort S and low risk, meant for the first PR.
+5. **Baseline measurement plan.** What needs to be measured on the tablet before touching anything:
+   - `am start -W` in the `verify` and `speed-profile` compilation states;
+   - Perfetto on Android 10 (`setprop persist.traced.enable 1`) with the specific categories and scenarios;
+   - `dumpsys gfxinfo` with automated swipes;
    - overdraw;
-   - `meminfo` y `am_proc_died`.
+   - `meminfo` and `am_proc_died`.
 
-   Siempre con un APK release que tenga `profileable`, nunca con uno debug. Indica qué métricas registrar en una tabla de referencia.
-6. **Descartados.** Los hallazgos refutados y el motivo.
-7. **Riesgos y cosas que no se deben tocar.** Por ejemplo, divergencias con AOSP que complicarían traer arreglos de la rama 15, y cambios de aspecto visibles.
+   Always with a release APK that has `profileable`, never with a debug one. State which metrics to record in a reference table.
+6. **Discarded.** The refuted findings and the reason.
+7. **Risks and things that must not be touched.** For example, divergences from AOSP that would make it harder to pull in fixes from the 15 branch, and visible appearance changes.
 
-## Reglas
+## Rules
 
-- No edites código ni hagas commits. El único fichero que puedes escribir es el backlog, en `docs/perf/`.
-- Distingue en todo momento CONFIRMADO de HIPÓTESIS, y no infles el impacto sin evidencia.
-- Prioriza los cambios pequeños, aislados y reversibles. Cada ítem debe caber en un PR.
-- Si algo solo se puede decidir midiendo, conviértelo en un ítem de medición (EVG-Mx) en lugar de suponer el resultado.
-- Al terminar, dame en el chat:
-  - el resumen;
-  - las 5 primeras ganancias rápidas;
-  - cuántos hallazgos se confirmaron, cuántos se refutaron y cuántos quedaron como hipótesis.
+- Do not edit code or make commits. The only file you may write is the backlog, in `docs/perf/`.
+- Always distinguish CONFIRMED from HYPOTHESIS, and do not inflate impact without evidence.
+- Prioritize small, isolated and reversible changes. Each item must fit in one PR.
+- If something can only be decided by measuring, turn it into a measurement item (EVG-Mx) instead of assuming the result.
+- When you finish, give me in the chat:
+  - the summary;
+  - the first 5 quick wins;
+  - how many findings were confirmed, how many were refuted and how many remained as hypotheses.
