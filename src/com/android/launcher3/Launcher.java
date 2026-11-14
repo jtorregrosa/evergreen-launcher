@@ -1854,6 +1854,12 @@ public class Launcher extends StatefulActivity<LauncherState>
     public void onDestroy() {
         super.onDestroy();
         ACTIVITY_TRACKER.onActivityDestroyed(this);
+        // Evergreen: LauncherAppState is process-wide; don't keep the destroyed Activity (and its
+        // whole view tree) alive until the next Launcher is created (EVG-15f).
+        LauncherAppState app = LauncherAppState.INSTANCE.getNoCreate();
+        if (app != null && app.getLauncher() == this) {
+            app.setLauncher(null);
+        }
 
         SettingsCache.INSTANCE.get(this).unregister(TOUCHPAD_NATURAL_SCROLLING,
                 mNaturalScrollingChangedListener);
