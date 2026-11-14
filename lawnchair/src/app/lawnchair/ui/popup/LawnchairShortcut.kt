@@ -30,10 +30,10 @@ import com.android.launcher3.Utilities
 import com.android.launcher3.icons.BitmapInfo
 import com.android.launcher3.model.data.AppInfo as ModelAppInfo
 import com.android.launcher3.model.data.ItemInfo
+import com.android.launcher3.model.data.ItemInfoWithIcon
 import com.android.launcher3.popup.SystemShortcut
 import com.android.launcher3.util.ComponentKey
 import com.android.launcher3.util.PackageManagerHelper
-import com.patrykmichalik.opto.core.firstBlocking
 import java.net.URISyntaxException
 
 class LawnchairShortcut {
@@ -42,7 +42,9 @@ class LawnchairShortcut {
 
         val CUSTOMIZE =
             SystemShortcut.Factory { activity: LawnchairLauncher, itemInfo, originalView ->
-                if (PreferenceManager2.getInstance(activity).lockHomeScreen.firstBlocking()) {
+                // Evergreen: cached value; this runs on every icon long-press.
+                val prefs2 = PreferenceManager2.getInstance(activity)
+                if (prefs2.cachedValue(prefs2.lockHomeScreen)) {
                     null
                 } else {
                     getAppInfo(activity, itemInfo)?.let { Customize(activity, it, itemInfo, originalView) }
@@ -61,11 +63,15 @@ class LawnchairShortcut {
                 if (itemInfo.targetComponent == null) {
                     return@Factory null
                 }
-                if (PackageManagerHelper.isSystemApp(
-                        activity,
-                        itemInfo.targetComponent!!.packageName,
-                    )
-                ) {
+                // Evergreen: use the system flag the model already knows, as SecondaryDropTarget
+                // does. Ask PackageManager (a binder call on every long-press) only if unknown.
+                val flags = (itemInfo as? ItemInfoWithIcon)?.runtimeStatusFlags ?: 0
+                val isSystemApp = if (flags and ItemInfoWithIcon.FLAG_SYSTEM_MASK != 0) {
+                    flags and ItemInfoWithIcon.FLAG_SYSTEM_NO == 0
+                } else {
+                    PackageManagerHelper.isSystemApp(activity, itemInfo.targetComponent!!.packageName)
+                }
+                if (isSystemApp) {
                     return@Factory null
                 }
                 UnInstall(activity, itemInfo, view)
