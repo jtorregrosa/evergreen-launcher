@@ -33,14 +33,12 @@ You are working on **Evergreen Launcher**, a fork of Lawnchair 15 (AOSP Launcher
   - Drawer jank: 8.5%. Search typing jank: 15.2%. Page swipes: ~0%.
 - `tools/perf/README.md`: the on-device measurement scripts. Use them, extend them, and keep their
   output comparable.
-- Settings > General > "Reduce visual effects" is on by default on Android 10/11 and low-RAM devices.
-  It currently means: a single shadow pass on labels, and no extra blurred shadow pass on adaptive
-  icons. Any new "lighter on modest devices" behavior should hang off this same setting (helpers in
-  `iconloaderlib/src/app/lawnchair/icons/IconPreferences.kt`).
-
 **Already decided, don't redo**
 - Removing `-dontoptimize` (full R8 optimization) was measured and rejected: ~3% slower cold start
   with full AOT.
+- A "Reduce visual effects" switch (single-pass label shadows, no extra blurred shadow pass on
+  adaptive icons) was measured and rejected: no gain in jank or cold start, and it looked the same.
+  Don't retry cheaper shadows as a smoothness fix. Look for the real long frames instead.
 
 ## Goal
 
