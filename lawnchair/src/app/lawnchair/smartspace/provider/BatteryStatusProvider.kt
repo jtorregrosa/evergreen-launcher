@@ -13,6 +13,7 @@ import app.lawnchair.util.broadcastReceiverFlow
 import app.lawnchair.util.formatShortElapsedTimeRoundingUpToMinutes
 import com.android.launcher3.R
 import com.android.launcher3.Utilities
+import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.map
 
 class BatteryStatusProvider(context: Context) :
@@ -22,6 +23,11 @@ class BatteryStatusProvider(context: Context) :
         { smartspaceBatteryStatus },
     ) {
     private val batteryManager = context.getSystemService<BatteryManager>()
+
+    // Evergreen: Icon has no equals(), so a new Icon per broadcast made every battery target
+    // different from the last one and rebound the card. Reuse one Icon per drawable.
+    private val chargingIcon by lazy { Icon.createWithResource(context, R.drawable.ic_charging) }
+    private val lowBatteryIcon by lazy { Icon.createWithResource(context, R.drawable.ic_battery_low) }
 
     override val internalTargets = broadcastReceiverFlow(context, IntentFilter(Intent.ACTION_BATTERY_CHANGED))
         .map { intent ->
@@ -33,8 +39,11 @@ class BatteryStatusProvider(context: Context) :
                     intent.getIntExtra(BatteryManager.EXTRA_LEVEL, 0) /
                     intent.getIntExtra(BatteryManager.EXTRA_SCALE, 100)
                 ).toInt()
-            listOfNotNull(getSmartspaceTarget(charging, full, level))
+            Triple(charging, full, level)
         }
+        // Evergreen: ACTION_BATTERY_CHANGED also fires for voltage and temperature changes.
+        .distinctUntilChanged()
+        .map { (charging, full, level) -> listOfNotNull(getSmartspaceTarget(charging, full, level)) }
 
     private fun getSmartspaceTarget(charging: Boolean, full: Boolean, level: Int): SmartspaceTarget? {
         val title = when {
@@ -59,12 +68,11 @@ class BatteryStatusProvider(context: Context) :
         } else {
             context.getString(R.string.n_percent, level)
         }
-        val iconResId = if (charging) R.drawable.ic_charging else R.drawable.ic_battery_low
         return SmartspaceTarget(
             id = "batteryStatus",
             headerAction = SmartspaceAction(
                 id = "batteryStatusAction",
-                icon = Icon.createWithResource(context, iconResId),
+                icon = if (charging) chargingIcon else lowBatteryIcon,
                 title = title,
                 subtitle = subtitle,
             ),

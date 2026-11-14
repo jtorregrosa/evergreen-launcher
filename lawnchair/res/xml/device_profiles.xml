@@ -176,6 +176,8 @@
         launcher:defaultLayoutId="@xml/default_workspace_6x5"
         launcher:deviceCategory="tablet" >
 
+        <!-- Evergreen: allAppsCellHeight 142 -> 112. With two-line labels a drawer row needs
+             about 105 dp; 142 left rows that looked empty. -->
         <display-option
             launcher:name="Tablet"
             launcher:minWidthDps="900"
@@ -193,7 +195,7 @@
             launcher:horizontalMargin="54"
             launcher:horizontalMarginLandscape="120"
             launcher:allAppsCellWidth="96"
-            launcher:allAppsCellHeight="142"
+            launcher:allAppsCellHeight="112"
             launcher:allAppsCellWidthLandscape="126"
             launcher:allAppsCellHeightLandscape="126"
             launcher:allAppsIconSize="60"

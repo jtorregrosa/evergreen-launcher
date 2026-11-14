@@ -7,7 +7,7 @@ for lab in sorted({r[0] for r in rows}):
     if t: print(lab, m, len(t), 'median', st.median(t), 'range', min(t), max(t), 'fallbacks', st.median(fb))
 agg={}
 for line in open(f):
-    m=re.match(r'(\w+),(pages|drawer|search),frames=(\d+),janky=(\d+) \(([\d.]+)%\),p50=(\d+)ms,p90=(\d+)ms,p95=(\d+)ms,p99=(\d+)ms',line)
+    m=re.match(r'([\w.-]+),(\w+),frames=(\d+),janky=(\d+) \(([\d.]+)%\),p50=(\d+)ms,p90=(\d+)ms,p95=(\d+)ms,p99=(\d+)ms',line)
     if m: agg.setdefault((m[1],m[2]),[]).append([float(x) for x in m.groups()[2:]])
 for k,v in sorted(agg.items()):
     a=[sum(c)/len(c) for c in zip(*v)]

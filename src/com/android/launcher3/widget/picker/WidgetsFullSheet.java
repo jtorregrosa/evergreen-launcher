@@ -636,7 +636,10 @@ public class WidgetsFullSheet extends BaseWidgetSheet
 
     private void open(boolean animate) {
         if (animate) {
-            if (getPopupContainer().getInsets().bottom > 0) {
+            // Evergreen: below API 31 skip the fade; fading the whole sheet put it in an
+            // offscreen layer during the first frames of the slide.
+            boolean fadeIn = Utilities.ATLEAST_S && getPopupContainer().getInsets().bottom > 0;
+            if (fadeIn) {
                 mContent.setAlpha(0);
             }
             setUpOpenAnimation(mActivityContext.getDeviceProfile().bottomSheetOpenDuration);
@@ -646,7 +649,9 @@ public class WidgetsFullSheet extends BaseWidgetSheet
             post(() -> {
                 animator.setDuration(mActivityContext.getDeviceProfile().bottomSheetOpenDuration)
                         .start();
-                mContent.animate().alpha(1).setDuration(FADE_IN_DURATION);
+                if (fadeIn) {
+                    mContent.animate().alpha(1).setDuration(FADE_IN_DURATION);
+                }
             });
         } else {
             setTranslationShift(TRANSLATION_SHIFT_OPENED);

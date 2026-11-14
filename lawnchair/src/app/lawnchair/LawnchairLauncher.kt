@@ -325,7 +325,8 @@ class LawnchairLauncher : QuickstepLauncher() {
     }
 
     override fun showDefaultOptions(x: Float, y: Float) {
-        val showWallpaperCarousel = "+carousel" in preferenceManager2.launcherPopupOrder.firstBlocking()
+        // Evergreen: cached value; this runs on every long-press of the home screen.
+        val showWallpaperCarousel = "+carousel" in preferenceManager2.cachedValue(preferenceManager2.launcherPopupOrder)
 
         if (showWallpaperCarousel) {
             show<LawnchairLauncher>(
@@ -491,13 +492,21 @@ class LawnchairLauncher : QuickstepLauncher() {
         }
     }
 
+    // Evergreen: AppWidgetHost.startListening() is a blocking call that replays every
+    // RemoteViews update missed while stopped, on the main thread for headless widgets. Start
+    // listening after the return-home transition instead of inside onStart.
+    private val startHeadlessListening = Runnable {
+        if (isStarted) HeadlessWidgetsManager.INSTANCE.getNoCreate()?.setListening(true)
+    }
+
     override fun onStart() {
         super.onStart()
-        HeadlessWidgetsManager.INSTANCE.getNoCreate()?.setListening(true)
+        window.decorView.postDelayed(startHeadlessListening, HEADLESS_LISTEN_DELAY_MS)
     }
 
     override fun onStop() {
         super.onStop()
+        window.decorView.removeCallbacks(startHeadlessListening)
         HeadlessWidgetsManager.INSTANCE.getNoCreate()?.setListening(false)
     }
 
@@ -508,6 +517,10 @@ class LawnchairLauncher : QuickstepLauncher() {
     }
 
     override fun getDefaultOverlay(): LauncherOverlayManager = defaultOverlay
+
+    // Evergreen: without recents there is no transition manager to show a FloatingIconView, so
+    // don't preload a full-resolution icon on every app launch.
+    override fun supportsAdaptiveIconAnimation(clickedView: View?): Boolean = LawnchairApp.isRecentsEnabled
 
     fun recreateIfNotScheduled() {
         if (sRestartFlags == 0) {
@@ -561,6 +574,7 @@ class LawnchairLauncher : QuickstepLauncher() {
 
         private const val ICON_PACK_STAMP_KEY = "evergreen_icon_pack_reload_stamp"
         private const val PROFILE_INSTALL_DELAY_MS = 5_000L
+        private const val HEADLESS_LISTEN_DELAY_MS = 400L
 
         val instance get() = LauncherAppState.getInstanceNoCreate()?.launcher as? LawnchairLauncher
     }

@@ -43,9 +43,10 @@ sealed class StretchRelativeLayout @JvmOverloads constructor(
     override fun absorbSwipeUpVelocity(velocity: Int) {
         if (Utilities.ATLEAST_S) {
             super.absorbSwipeUpVelocity(velocity)
-        } else {
-            edgeEffectBottom.onAbsorb(velocity)
         }
+        // Evergreen: below API 31 the stretch is a canvas scale that redraws the whole drawer,
+        // with every label re-rasterized at a new scale, for ~300 ms after each swipe-up open.
+        // It moves the sheet by ~1%, too little to be worth that on low-end GPUs.
     }
 
     override fun createEdgeEffectFactory(): RecyclerView.EdgeEffectFactory {

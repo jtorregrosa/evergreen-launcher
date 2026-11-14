@@ -59,14 +59,17 @@ object LauncherOptionsPopup {
         onStartHomeSettings: (View) -> Boolean,
     ): ArrayList<OptionItem> {
         val prefs2 = getInstance(launcher!!)
-        val lockHomeScreen = prefs2.lockHomeScreen.firstBlocking()
+        // Evergreen: cached preference values and a single resolveActivity() call; this runs on
+        // every long-press of the home screen.
+        val lockHomeScreen = prefs2.cachedValue(prefs2.lockHomeScreen)
         val optionOrder = prefs2
-            .launcherPopupOrder.firstBlocking().toLauncherOptions()
+            .cachedValue(prefs2.launcherPopupOrder).toLauncherOptions()
 
+        val styleWallpapers = Utilities.existsStyleWallpapers(launcher)
         val wallpaperResString =
-            if (Utilities.existsStyleWallpapers(launcher)) R.string.styles_wallpaper_button_text else R.string.wallpapers
+            if (styleWallpapers) R.string.styles_wallpaper_button_text else R.string.wallpapers
         val wallpaperResDrawable =
-            if (Utilities.existsStyleWallpapers(launcher)) R.drawable.ic_palette else R.drawable.ic_wallpaper
+            if (styleWallpapers) R.drawable.ic_palette else R.drawable.ic_wallpaper
 
         val optionsList = mapOf(
             "lock" to OptionItem(

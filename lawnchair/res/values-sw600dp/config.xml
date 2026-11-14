@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Evergreen: on tablets the drawer margin is the free width times (factor * 2), applied
+         on top of the previous pass, so 0.1 left 17 dp side margins and an almost full-width
+         sheet. 0.3 gives about 48 dp on an 800 dp wide tablet. Only the default changes; a
+         value chosen in Settings still wins. -->
+    <item name="config_default_drawer_left_right_factor" type="dimen" format="float">0.3</item>
+</resources>

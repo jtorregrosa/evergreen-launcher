@@ -463,7 +463,9 @@ public class DeviceProfile {
         bottomSheetOpenDuration = res.getInteger(R.integer.config_bottomSheetOpenDuration);
         bottomSheetCloseDuration = res.getInteger(R.integer.config_bottomSheetCloseDuration);
         if (isTablet) {
-            bottomSheetWorkspaceScale = workspaceContentScale;
+            // Evergreen: below API 31 there is no blur or depth behind the widget sheet, so
+            // scaling the workspace only re-rasterized every label on every frame of the slide.
+            bottomSheetWorkspaceScale = Utilities.ATLEAST_S ? workspaceContentScale : 1f;
             if (isMultiDisplay && !ENABLE_MULTI_DISPLAY_PARTIAL_DEPTH.get()) {
                 // TODO(b/259893832): Revert to use maxWallpaperScale to calculate
                 // bottomSheetDepth
@@ -970,7 +972,9 @@ public class DeviceProfile {
      * necessary.
      */
     public void recalculateHotseatWidthAndBorderSpace() {
-        if (!mIsScalableGrid || isTablet)
+        // Evergreen: tablets without a taskbar lay out the hotseat like a scalable phone grid, so
+        // let the icons spread over the workspace columns instead of sitting side by side.
+        if (!mIsScalableGrid || (isTablet && isTaskbarPresent))
             return;
 
         updateHotseatWidthAndBorderSpace(inv.numColumns);

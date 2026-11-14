@@ -169,7 +169,8 @@ val View?.pendingIntent get() = this?.getTag(pendingIntentTagId) as? PendingInte
 
 fun getFolderPreviewAlpha(context: Context): Int {
     val prefs2 = PreferenceManager2.getInstance(context)
-    return (prefs2.folderPreviewBackgroundOpacity.firstBlocking() * 255).toInt()
+    // Evergreen: cached value; this runs on every folder open and close.
+    return (prefs2.cachedValue(prefs2.folderPreviewBackgroundOpacity) * 255).toInt()
 }
 
 fun getFolderBackgroundAlpha(context: Context): Int {

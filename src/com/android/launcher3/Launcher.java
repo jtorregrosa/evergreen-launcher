@@ -1308,7 +1308,12 @@ public class Launcher extends StatefulActivity<LauncherState>
         }
 
         // Set screen title for Talkback
-        setTitle(state.getTitle());
+        // Evergreen: a new title updates the window's accessibility title, which goes through
+        // WindowManager.updateViewLayout() and lays out the whole window again, right as the
+        // drawer finishes opening or closing. Only do it when accessibility is on.
+        if (AccessibilityManagerCompat.isAccessibilityEnabled(this)) {
+            setTitle(state.getTitle());
+        }
     }
 
     /**

@@ -36,6 +36,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.core.content.FileProvider
+import app.lawnchair.evergreen.TabletGridDefaults
 import app.lawnchair.backup.LawnchairBackup
 import app.lawnchair.flowerpot.Flowerpot
 import app.lawnchair.preferences.PreferenceManager
@@ -64,6 +65,8 @@ class LawnchairApp : Application() {
     override fun onCreate() {
         super.onCreate()
         instance = this
+        // Evergreen: must run before anything creates the device profile.
+        TabletGridDefaults.apply(this)
         QuickStepContract.sRecentsDisabled = !recentsEnabled
         Flowerpot.Manager.getInstance(this)
     }

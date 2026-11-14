@@ -6,6 +6,7 @@ import android.graphics.Insets
 import android.graphics.Rect
 import android.hardware.display.DisplayManager
 import android.util.ArrayMap
+import android.util.DisplayMetrics
 import android.view.Display
 import android.view.Display.DEFAULT_DISPLAY
 import android.view.DisplayCutout
@@ -22,6 +23,7 @@ import com.android.launcher3.util.WindowBounds
 import com.android.launcher3.util.window.CachedDisplayInfo
 import com.android.launcher3.util.window.WindowManagerProxy
 import kotlin.math.max
+import kotlin.math.min
 
 @Keep
 class LawnchairWindowManagerProxy(context: Context) : WindowManagerProxy(Utilities.ATLEAST_T) {
@@ -43,7 +45,34 @@ class LawnchairWindowManagerProxy(context: Context) : WindowManagerProxy(Utiliti
             normalizeWindowInsets(displayInfoContext, windowMetrics.windowInsets, insets)
             WindowBounds(windowMetrics.bounds, insets, info.rotation)
         } else {
-            WindowBounds(Rect(), Rect(), info.rotation)
+            // Evergreen: there is no maximumWindowMetrics below API 30. Empty bounds here made
+            // DisplayController see one 0x0 "phone" bound next to the tablet ones and report
+            // TYPE_MULTI_DISPLAY, so tablets got the two-panel phone grid. Use the estimate for
+            // the current rotation, which also keeps the supported bounds stable.
+            estimateWindowBounds(displayInfoContext, info)[info.rotation]
+        }
+    }
+
+    override fun estimateWindowBounds(context: Context, displayInfo: CachedDisplayInfo): List<WindowBounds> {
+        val bounds = super.estimateWindowBounds(context, displayInfo)
+        if (mTaskbarDrawnInProcess) return bounds
+        val swDp = min(displayInfo.size.x, displayInfo.size.y) * DisplayMetrics.DENSITY_DEFAULT /
+            context.resources.configuration.densityDpi
+        if (swDp < MIN_TABLET_WIDTH) return bounds
+        // Evergreen: without an in-process taskbar, tablets show the system navigation bar at
+        // the bottom in both orientations. The base estimate used the taskbar height instead
+        // (60 dp on API 29 against a 48 dp navigation bar).
+        val systemRes = context.resources
+        return bounds.map {
+            val portrait = it.bounds.height() > it.bounds.width()
+            val navBar = getDimenByName(
+                systemRes,
+                if (portrait) ResourceUtils.NAVBAR_HEIGHT else ResourceUtils.NAVBAR_HEIGHT_LANDSCAPE,
+                ResourceUtils.NAVBAR_HEIGHT,
+            )
+            if (navBar <= 0) return@map it
+            val insets = Rect(it.insets).apply { bottom = navBar }
+            WindowBounds(it.bounds, insets, it.rotationHint)
         }
     }
 

@@ -260,6 +260,12 @@ public abstract class ArrowPopup<T extends Context & ActivityContext>
                 lastView = view;
                 MarginLayoutParams mlp = (MarginLayoutParams) lastView.getLayoutParams();
                 mlp.bottomMargin = 0;
+                if (!Utilities.ATLEAST_S) {
+                    // Evergreen: every row casts its own shadow from a per-corner-radius (path)
+                    // outline, rebuilt on every frame while the popup scales. Below API 31 that
+                    // kept the open animation at ~30 fps on low-end GPUs.
+                    view.setElevation(0);
+                }
 
                 if (colors != null) {
                     if (!FeatureFlags.showMaterialUPopup(getContext())) {
@@ -706,14 +712,20 @@ public abstract class ArrowPopup<T extends Context & ActivityContext>
         mIsOpen = false;
 
         mOpenCloseAnimator = FeatureFlags.showMaterialUPopup(getContext())
-                ? getMaterialUOpenCloseAnimator(
-                        false,
-                        CLOSE_DURATION_U,
-                        CLOSE_FADE_START_DELAY_U,
-                        CLOSE_FADE_DURATION_U,
-                        CLOSE_CHILD_FADE_START_DELAY_U,
-                        CLOSE_CHILD_FADE_DURATION_U,
-                        EMPHASIZED_ACCELERATE)
+                // Evergreen: below API 31, close in 150 ms with the fade over the last 100 ms.
+                // EMPHASIZED_ACCELERATE barely moves for the first 60% of 233 ms, so the popup
+                // seemed to ignore the dismiss before vanishing.
+                ? (Utilities.ATLEAST_S
+                        ? getMaterialUOpenCloseAnimator(
+                                false,
+                                CLOSE_DURATION_U,
+                                CLOSE_FADE_START_DELAY_U,
+                                CLOSE_FADE_DURATION_U,
+                                CLOSE_CHILD_FADE_START_DELAY_U,
+                                CLOSE_CHILD_FADE_DURATION_U,
+                                EMPHASIZED_ACCELERATE)
+                        : getMaterialUOpenCloseAnimator(
+                                false, 150, 50, 100, 50, 100, EMPHASIZED_ACCELERATE))
                 : getOpenCloseAnimator(false,
                         mCloseDuration,
                         mCloseFadeStartDelay,
@@ -751,7 +763,11 @@ public abstract class ArrowPopup<T extends Context & ActivityContext>
         }
 
         float[] alphaValues = isOpening ? new float[] { 0, 1 } : new float[] { 1, 0 };
-        float[] scaleValues = isOpening ? new float[] { 0.5f, 1.02f } : new float[] { 1f, 0.5f };
+        // Evergreen: below API 31, open straight to 1 without the 200 ms overshoot that kept the
+        // popup animating after it was already open.
+        boolean overshoot = isOpening && Utilities.ATLEAST_S;
+        float[] scaleValues = isOpening
+                ? new float[] { 0.5f, overshoot ? 1.02f : 1f } : new float[] { 1f, 0.5f };
         Animator alpha = getAnimatorOfFloat(this, View.ALPHA, fadeDuration, fadeStartDelay,
                 LINEAR, alphaValues);
         Animator arrowAlpha = getAnimatorOfFloat(mArrow, View.ALPHA, fadeDuration, fadeStartDelay,
@@ -762,7 +778,7 @@ public abstract class ArrowPopup<T extends Context & ActivityContext>
                 scaleValues);
 
         final AnimatorSet animatorSet = new AnimatorSet();
-        if (isOpening) {
+        if (overshoot) {
             float[] scaleValuesOvershoot = new float[] { 1.02f, 1f };
             PathInterpolator overshootInterpolator = new PathInterpolator(0.3f, 0, 0.33f, 1f);
             Animator overshootY = getAnimatorOfFloat(this, View.SCALE_Y,
@@ -777,8 +793,19 @@ public abstract class ArrowPopup<T extends Context & ActivityContext>
             animatorSet.playTogether(alpha, arrowAlpha, scaleY, scaleX);
         }
 
-        fadeInChildViews(this, alphaValues, childFadeStartDelay, childFadeDuration, animatorSet);
+        // Evergreen: when the children fade in the same window as the popup, their own fade only
+        // adds one offscreen layer per child; the popup alpha already fades them.
+        if (childFadeStartDelay != fadeStartDelay || childFadeDuration != fadeDuration) {
+            fadeInChildViews(this, alphaValues, childFadeStartDelay, childFadeDuration,
+                    animatorSet);
+        }
         return animatorSet;
+    }
+
+    @Override
+    public boolean hasOverlappingRendering() {
+        // Evergreen: the rows don't overlap, so fading the popup doesn't need an offscreen layer.
+        return false;
     }
 
     private Animator getAnimatorOfFloat(View view, Property<View, Float> property,

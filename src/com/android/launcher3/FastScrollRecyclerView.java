@@ -97,7 +97,8 @@ public abstract class FastScrollRecyclerView extends RecyclerView {
      * Saved the scroll position
      */
     public void saveScrollPosition() {
-        savedScrollPosition = PreferenceExtensionsKt.firstBlocking(pref2.getRememberPosition())
+        // Evergreen: cached value; this runs at the end of every scroll and drawer close.
+        savedScrollPosition = pref2.cachedValue(pref2.getRememberPosition())
                 ? computeVerticalScrollOffset()
                 : 0;
     }
@@ -233,6 +234,12 @@ public abstract class FastScrollRecyclerView extends RecyclerView {
             mScrollbar.reattachThumbToScroll();
         }
         saveScrollPosition();
+        // Evergreen: scrollToPosition() always requests a layout. When the list is already at
+        // the top that layout is wasted, and while the drawer is GONE it is deferred into the
+        // first frame of the next open.
+        if (savedScrollPosition == 0 && !canScrollVertically(-1)) {
+            return;
+        }
         scrollToPosition(savedScrollPosition);
     }
 }

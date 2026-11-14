@@ -21,9 +21,9 @@ $ADB shell input keyevent KEYCODE_BACK; sleep 0.6; $ADB shell input keyevent KEY
 home
 $ADB shell input swipe 600 700 600 700 1200; sleep 1.5; shot 04_longpress
 $ADB shell input keyevent KEYCODE_BACK; sleep 1
-$ADB shell input tap 85 1390; sleep 1.5; shot 05_folder
+$ADB shell input tap 157 1310; sleep 1.5; shot 05_folder
 $ADB shell input keyevent KEYCODE_BACK; sleep 1
-$ADB shell input tap 1113 1390; sleep 3; shot 06_app_launched
+$ADB shell input tap 688 1310; sleep 3; shot 06_app_launched
 home
 $ADB shell am start -n $PKG/app.lawnchair.ui.preferences.PreferenceActivity >/dev/null 2>&1; sleep 3; shot 07_settings
 $ADB shell input keyevent KEYCODE_BACK; sleep 1

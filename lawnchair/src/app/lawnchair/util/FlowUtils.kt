@@ -12,8 +12,6 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.buffer
 import kotlinx.coroutines.flow.callbackFlow
 import kotlinx.coroutines.flow.channelFlow
-import kotlinx.coroutines.flow.distinctUntilChanged
-import kotlinx.coroutines.flow.drop
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.launchIn
 import kotlinx.coroutines.flow.onEach
@@ -42,10 +40,17 @@ fun <T> Flow<T>.subscribeBlocking(
     scope: CoroutineScope,
     block: (T) -> Unit,
 ) {
-    block(firstBlocking())
+    // Evergreen: the callback used to run twice on subscription (once here, then for the first
+    // emission, because onEach came before drop(1)), and distinctUntilChanged() came after the
+    // callback, so it filtered nothing.
+    var last = firstBlocking()
+    block(last)
     this
-        .onEach { block(it) }
-        .drop(1)
-        .distinctUntilChanged()
+        .onEach {
+            if (it != last) {
+                last = it
+                block(it)
+            }
+        }
         .launchIn(scope = scope)
 }
