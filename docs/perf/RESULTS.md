@@ -37,6 +37,7 @@ Total so far: **−27%** without AOT and **−22%** with full AOT.
 | PR #1 | 0.0% / 9 / 12 ms | 22.1% / 23 / 36 ms | 29.6% / 33 / 61 ms |
 | PR #2 | 0.1% / 8 / 12 ms | **16.8%** / 20 / 37 ms | **27.1%** / 26 / **46 ms** |
 | PR #3 (3 rounds) | 0.05% / 9 / 12 ms | 20.2% / 21 / 34 ms | 31.8% / 28 / 47 ms |
+| PR #4: no workspace under the drawer sheet below API 31 (3 rounds) | 0.1% / 9 / 12 ms | **9.6%** / 20 / 37 ms | **22.1%** / 26 / 48 ms |
 
 Run-to-run noise in the drawer and search columns is about ±5 percentage points, so PR #3 is
 neutral for interaction, as expected. Its target is background work:

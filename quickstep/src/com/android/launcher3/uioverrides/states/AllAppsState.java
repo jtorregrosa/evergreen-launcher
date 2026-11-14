@@ -26,6 +26,7 @@ import com.android.launcher3.DeviceProfile;
 import com.android.launcher3.Launcher;
 import com.android.launcher3.LauncherState;
 import com.android.launcher3.R;
+import com.android.launcher3.Utilities;
 import com.android.launcher3.config.FeatureFlags;
 import com.android.launcher3.util.Themes;
 import com.android.launcher3.views.ActivityContext;
@@ -158,7 +159,7 @@ public class AllAppsState extends LauncherState {
         return new PageAlphaProvider(DECELERATE_2) {
             @Override
             public float getPageAlpha(int pageIndex) {
-                return launcher.getDeviceProfile().isTablet
+                return keepWorkspaceUnderSheet(launcher)
                         ? superPageAlphaProvider.getPageAlpha(pageIndex)
                         : 0;
             }
@@ -169,10 +170,20 @@ public class AllAppsState extends LauncherState {
     public int getVisibleElements(Launcher launcher) {
         int elements = ALL_APPS_CONTENT | FLOATING_SEARCH_BAR;
         // Only add HOTSEAT_ICONS for tablets in ALL_APPS state.
-        if (launcher.getDeviceProfile().isTablet) {
+        if (keepWorkspaceUnderSheet(launcher)) {
             elements |= HOTSEAT_ICONS;
         }
         return elements;
+    }
+
+    /**
+     * Tablets keep the workspace and hotseat visible under the all-apps bottom sheet because, from
+     * Android 12, the area around the sheet is blurred. Evergreen: below API 31 there is no blur,
+     * so the opaque sheet just overdraws a fully rendered workspace + hotseat every frame; fade
+     * them out instead, like on phones.
+     */
+    private static boolean keepWorkspaceUnderSheet(Launcher launcher) {
+        return launcher.getDeviceProfile().isTablet && Utilities.ATLEAST_S;
     }
 
     @Override
