@@ -53,6 +53,10 @@ class WallpaperViewModel(application: Application) : AndroidViewModel(applicatio
         }
     }
 
+    override fun onCleared() {
+        wallpaperManagerCompat.removeOnChangeListener(listener)
+    }
+
     suspend fun updateWallpaperRank(wallpaper: Wallpaper) {
         wallpaperManagerCompat.service.updateWallpaperRank(wallpaper)
         loadTopWallpapers()

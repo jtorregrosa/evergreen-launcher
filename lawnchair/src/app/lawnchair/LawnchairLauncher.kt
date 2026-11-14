@@ -454,24 +454,7 @@ class LawnchairLauncher : QuickstepLauncher() {
     override fun onResume() {
         super.onResume()
         restartIfPending()
-
-        dragLayer.viewTreeObserver.addOnDrawListener(
-            object : ViewTreeObserver.OnDrawListener {
-                private var handled = false
-
-                override fun onDraw() {
-                    if (handled) {
-                        return
-                    }
-                    handled = true
-
-                    dragLayer.post {
-                        dragLayer.viewTreeObserver.removeOnDrawListener(this)
-                    }
-                    depthController
-                }
-            },
-        )
+        // Evergreen: removed a one-shot OnDrawListener here that only read depthController.
     }
 
     private var hasReportedFullyDrawn = false

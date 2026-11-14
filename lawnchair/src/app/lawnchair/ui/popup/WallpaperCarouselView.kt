@@ -18,7 +18,7 @@ import androidx.activity.ComponentActivity
 import androidx.activity.viewModels
 import androidx.cardview.widget.CardView
 import androidx.core.content.ContextCompat
-import androidx.lifecycle.LifecycleOwner
+import androidx.lifecycle.Observer
 import app.lawnchair.LawnchairLauncher
 import app.lawnchair.data.wallpaper.Wallpaper
 import app.lawnchair.data.wallpaper.model.WallpaperViewModel
@@ -50,15 +50,24 @@ class WallpaperCarouselView @JvmOverloads constructor(
     init {
         orientation = HORIZONTAL
         addView(loadingView)
-        observeWallpapers()
     }
 
-    private fun observeWallpapers() {
-        viewModel.wallpapers.observe(context as LifecycleOwner) { wallpapers ->
-            visibility = if (wallpapers.isEmpty()) GONE else VISIBLE
-            loadingView.visibility = if (wallpapers.isEmpty()) GONE else VISIBLE
-            if (wallpapers.isNotEmpty()) displayWallpapers(wallpapers)
-        }
+    // Evergreen: the observer lives as long as the view is attached. It used to be registered
+    // against the Activity on every long press, so observers (and popups) accumulated.
+    private val wallpapersObserver = Observer<List<Wallpaper>> { wallpapers ->
+        visibility = if (wallpapers.isEmpty()) GONE else VISIBLE
+        loadingView.visibility = if (wallpapers.isEmpty()) GONE else VISIBLE
+        if (wallpapers.isNotEmpty()) displayWallpapers(wallpapers)
+    }
+
+    override fun onAttachedToWindow() {
+        super.onAttachedToWindow()
+        viewModel.wallpapers.observeForever(wallpapersObserver)
+    }
+
+    override fun onDetachedFromWindow() {
+        viewModel.wallpapers.removeObserver(wallpapersObserver)
+        super.onDetachedFromWindow()
     }
 
     private fun displayWallpapers(wallpapers: List<Wallpaper>) {
@@ -114,9 +123,28 @@ class WallpaperCarouselView @JvmOverloads constructor(
 
     private fun loadWallpaperImage(wallpaper: Wallpaper, cardView: CardView, isCurrent: Boolean) {
         CoroutineScope(Dispatchers.IO).launch {
-            val bitmap = File(wallpaper.imagePath).takeIf { it.exists() }?.let { BitmapFactory.decodeFile(it.path) }
+            val bitmap = File(wallpaper.imagePath).takeIf { it.exists() }?.let { decodeThumbnail(it.path) }
             withContext(Dispatchers.Main) { addImageView(cardView, bitmap, isCurrent) }
         }
+    }
+
+    // Evergreen: the cards are a few hundred pixels wide; decode a subsampled RGB_565 copy
+    // instead of the full-resolution wallpaper.
+    private fun decodeThumbnail(path: String): Bitmap? {
+        val bounds = BitmapFactory.Options().apply { inJustDecodeBounds = true }
+        BitmapFactory.decodeFile(path, bounds)
+        val target = calculateTotalWidth().coerceAtLeast(1)
+        var sample = 1
+        while (bounds.outWidth / (sample * 2) >= target && bounds.outHeight / (sample * 2) >= target) {
+            sample *= 2
+        }
+        return BitmapFactory.decodeFile(
+            path,
+            BitmapFactory.Options().apply {
+                inSampleSize = sample
+                inPreferredConfig = Bitmap.Config.RGB_565
+            },
+        )
     }
 
     private fun addImageView(cardView: CardView, bitmap: Bitmap?, isCurrent: Boolean) {

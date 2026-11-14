@@ -284,18 +284,26 @@ Merged into `perf/android10` (see `docs/perf/RESULTS.md` for the measurements):
 | #21 | Plan R4c (folder first open), drawer first open (deferred list layout) |
 | #22 | EVG-15f |
 
-Still open, roughly in priority order:
-- Drawer sheet drawn twice per pixel (overdraw view); the second layer is not identified yet.
-- Plan R2c: the long drawer, folder and menu frames are GL driver time (`flush commands`), not
-  layout or uploads. Fewer draw calls would be the lever (for example a hardware layer for the
-  static workspace behind folders); not tried.
-- Plan R4b: folder reveal path; only matters for squircle icon shapes.
-- Plan R5a: widget picker open frame (inflation, double bind). Not reproduced in the afternoon runs.
+| #25 | EVG-15c, EVG-3c, EVG-18, EVG-15g, EVG-5d, EVG-10c, EVG-10d |
+
+Closed without a code change (see RESULTS.md):
+- Drawer sheet "drawn twice": not a second layer. On this device's renderer a single draw already
+  shows the blue overdraw tint (checked by hiding views one by one: the sheet path alone is blue,
+  the handle on top of it is green). The sheet is drawn once.
+- Plan R2c: with this home layout (one widget, one folder, a few icons) the workspace behind a
+  folder is a handful of draw calls; a hardware layer would add a layer render on the first frame
+  for nothing. Launcher3 already uses one with 10+ folders and no widgets.
+- Plan R5a: widget picker open measured again (3 runs): 3.2-4.6% janky, worst frame 26-31 ms. No
+  long opening frame.
+- EVG-15b: 3.9 GB RAM with about 2.4 GB available, launcher PSS about 110 MB. Dropping the icon and
+  view caches on trim would undo the first-open work for a few MB.
 - Plan V5 and V7 need no change: folder and popup colours already come from the wallpaper
   palette, and sheets, popups and folders share a 24 dp radius. V6 (drawer duration) left as is.
-- EVG-1b: confirm with a log first.
+
+Still open, only relevant with other settings:
+- Plan R4b: folder reveal path; only matters for squircle icon shapes.
+- EVG-1b: confirm with a log first; only with themed icons.
 - EVG-1e, EVG-1f: only relevant with an icon pack or system icon overrides.
-- EVG-15b: `onTrimMemory`.
 - EVG-1d / EVG-21 (modest-device mode with lighter shadows): implemented and measured, no gain, so not merged. See RESULTS.md.
 - EVG-6b: systemic preference cache. `cachedValue()` exists; the remaining `firstBlocking()` calls are on cold paths.
 - EVG-8b/8c/8d: only with drawer folders or categories.
