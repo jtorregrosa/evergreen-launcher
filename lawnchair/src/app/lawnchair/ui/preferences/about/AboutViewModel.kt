@@ -67,15 +67,27 @@ class AboutViewModel(
         nightlyBuildsRepository.installUpdate(file)
     }
 
+    // Evergreen: the contributor status is cosmetic; query the GitHub API at most once a day per
+    // process instead of on every open of the About screen.
     private suspend fun fetchActiveContributors(): Set<String> {
+        val now = System.currentTimeMillis()
+        cachedContributors?.let { (time, logins) ->
+            if (now - time < CONTRIBUTORS_TTL_MS) return logins
+        }
         return runCatching {
             nightlyBuildsRepository.api.getRepositoryEvents("LawnchairLauncher", "lawnchair")
                 .map { it.actor.login.lowercase() }
                 .toSet()
-        }.getOrDefault(emptySet())
+        }.onSuccess { cachedContributors = now to it }
+            .getOrDefault(emptySet())
     }
 
     companion object {
+        private const val CONTRIBUTORS_TTL_MS = 24L * 60 * 60 * 1000
+
+        @Volatile
+        private var cachedContributors: Pair<Long, Set<String>>? = null
+
         private val team = listOf(
             TeamMember(
                 name = "Amogh Lele",

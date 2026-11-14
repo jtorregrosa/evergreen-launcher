@@ -57,10 +57,10 @@ class LawnchairAppSearchAlgorithm(context: Context) : LawnchairSearchAlgorithm(c
     override fun doSearch(query: String, callback: SearchCallback<BaseAllAppsAdapter.AdapterItem>) {
         appState.model.enqueueModelUpdateTask(object : LauncherModel.ModelUpdateTask {
             override fun execute(app: ModelTaskController, dataModel: BgDataModel, apps: AllAppsList) {
-                coroutineScope.launch(Dispatchers.Main) {
-                    val results = getResult(apps.data, query)
-                    callback.onSearchResult(query, results)
-                }
+                // Evergreen: search on the model thread, which owns AllAppsList.data, and only
+                // hand the result to the main thread (it used to run the whole search on Main).
+                val results = getResult(apps.data, query)
+                resultHandler.post { callback.onSearchResult(query, results) }
             }
         })
     }

@@ -70,6 +70,14 @@ public class DepthController extends BaseDepthController implements StateHandler
         mEnableDepth = PreferenceExtensionsKt.firstBlocking(pref);
     }
 
+    /**
+     * Evergreen: depth and blur are only applied on R+ with the depth pref on. Otherwise the
+     * draw listeners and the per-transition depth animators do nothing.
+     */
+    private boolean isActive() {
+        return LawnchairQuickstepCompat.ATLEAST_R && mEnableDepth;
+    }
+
     private void onLauncherDraw() {
         View view = mLauncher.getDragLayer();
         ViewRootImpl viewRootImpl = view.getViewRootImpl();
@@ -142,6 +150,7 @@ public class DepthController extends BaseDepthController implements StateHandler
      * Sets if the underlying activity is started or not
      */
     public void setActivityStarted(boolean isStarted) {
+        if (!isActive()) return;
         if (isStarted) {
             mLauncher.getDragLayer().getViewTreeObserver().addOnDrawListener(mOnDrawListener);
         } else {
@@ -157,7 +166,7 @@ public class DepthController extends BaseDepthController implements StateHandler
         }
 
         stateDepth.setValue(toState.getDepth(mLauncher));
-        if (toState == LauncherState.BACKGROUND_APP) {
+        if (toState == LauncherState.BACKGROUND_APP && isActive()) {
             mLauncher.getDragLayer().getViewTreeObserver().addOnDrawListener(mOnDrawListener);
         }
     }
@@ -167,6 +176,10 @@ public class DepthController extends BaseDepthController implements StateHandler
                                       PendingAnimation animation) {
         if (config.hasAnimationFlag(SKIP_DEPTH_CONTROLLER)
                 || mIgnoreStateChangesDuringMultiWindowAnimation) {
+            return;
+        }
+        if (!isActive()) {
+            stateDepth.setValue(toState.getDepth(mLauncher));
             return;
         }
 
@@ -189,6 +202,7 @@ public class DepthController extends BaseDepthController implements StateHandler
 
     @Override
     protected void onInvalidSurface() {
+        if (!isActive()) return;
         // Lets wait for surface to become valid again
         mLauncher.getDragLayer().getViewTreeObserver().addOnDrawListener(mOnDrawListener);
     }
