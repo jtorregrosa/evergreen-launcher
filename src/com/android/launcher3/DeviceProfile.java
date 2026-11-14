@@ -970,7 +970,9 @@ public class DeviceProfile {
      * necessary.
      */
     public void recalculateHotseatWidthAndBorderSpace() {
-        if (!mIsScalableGrid || isTablet)
+        // Evergreen: tablets without a taskbar lay out the hotseat like a scalable phone grid, so
+        // let the icons spread over the workspace columns instead of sitting side by side.
+        if (!mIsScalableGrid || (isTablet && isTaskbarPresent))
             return;
 
         updateHotseatWidthAndBorderSpace(inv.numColumns);
