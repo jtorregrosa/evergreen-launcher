@@ -1,3 +1,5 @@
+<img src="docs/branding/evergreen-icon.svg" alt="Evergreen icon" width="96" align="right">
+
 # Evergreen Launcher
 
 Evergreen is a performance-focused fork of [Lawnchair](https://github.com/LawnchairLauncher/lawnchair) 15
