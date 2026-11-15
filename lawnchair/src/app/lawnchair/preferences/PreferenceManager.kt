@@ -25,8 +25,10 @@ import app.lawnchair.util.isGestureNavContractCompatible
 import app.lawnchair.util.isOnePlusStock
 import com.android.launcher3.InvariantDeviceProfile
 import com.android.launcher3.InvariantDeviceProfile.INDEX_DEFAULT
+import com.android.launcher3.LauncherAppState
 import com.android.launcher3.model.DeviceGridState
 import com.android.launcher3.util.ComponentKey
+import com.android.launcher3.util.Executors.MAIN_EXECUTOR
 import com.android.launcher3.util.MainThreadInitializedObject
 import com.android.launcher3.util.SafeCloseable
 
@@ -34,7 +36,11 @@ class PreferenceManager private constructor(private val context: Context) :
     BasePreferenceManager(context),
     SafeCloseable {
     private val idp get() = InvariantDeviceProfile.INSTANCE.get(context)
-    private val reloadIcons = { idp.onPreferencesChanged(context) }
+    // Evergreen: grid changes no longer wipe the icon cache (LauncherAppState.reloadAfterGridChange),
+    // so preferences that change how icons are rendered reload them explicitly.
+    private val reloadIcons = {
+        MAIN_EXECUTOR.execute { LauncherAppState.getInstance(context).reloadIcons() }
+    }
     private val reloadGrid: () -> Unit = { idp.onPreferencesChanged(context) }
 
     private val recreate = {
@@ -42,12 +48,19 @@ class PreferenceManager private constructor(private val context: Context) :
         Unit
     }
 
+    // Evergreen: these are baked into the cached icon bitmaps. Upstream re-rendered every icon on
+    // each onCreate, so a recreate was enough; since EVG-1 the cache survives and must be reloaded.
+    private val reloadIconsAndRecreate = {
+        reloadIcons()
+        recreate()
+    }
+
     val iconPackPackage = StringPref("pref_iconPackPackage", "", reloadIcons)
     val themedIconPackPackage = StringPref("pref_themedIconPackPackage", "", recreate)
     val allowRotation = BoolPref("pref_allowRotation", false)
-    val wrapAdaptiveIcons = BoolPref("prefs_wrapAdaptive", false, recreate)
-    val transparentIconBackground = BoolPref("prefs_transparentIconBackground", false, recreate)
-    val shadowBGIcons = BoolPref("pref_shadowBGIcons", true, recreate)
+    val wrapAdaptiveIcons = BoolPref("prefs_wrapAdaptive", false, reloadIconsAndRecreate)
+    val transparentIconBackground = BoolPref("prefs_transparentIconBackground", false, reloadIconsAndRecreate)
+    val shadowBGIcons = BoolPref("pref_shadowBGIcons", true, reloadIconsAndRecreate)
     val addIconToHome = BoolPref("pref_add_icon_to_home", true)
     val hotseatColumns = IntPref("pref_hotseatColumns", 4, reloadGrid)
     val workspaceColumns = IntPref("pref_workspaceColumns", 4)
@@ -56,7 +69,7 @@ class PreferenceManager private constructor(private val context: Context) :
     val folderRows = IdpIntPref("pref_folderRows", { numFolderRows[INDEX_DEFAULT] }, reloadGrid)
 
     val drawerOpacity = FloatPref("pref_drawerOpacity", 1F, recreate)
-    val coloredBackgroundLightness = FloatPref("pref_coloredBackgroundLightness", 0.9F, recreate)
+    val coloredBackgroundLightness = FloatPref("pref_coloredBackgroundLightness", 0.9F, reloadIconsAndRecreate)
     val feedProvider = StringPref("pref_feedProvider", "")
     val ignoreFeedWhitelist = BoolPref("pref_ignoreFeedWhitelist", false)
     val launcherTheme = StringPref("pref_launcherTheme", "system")
@@ -103,7 +116,7 @@ class PreferenceManager private constructor(private val context: Context) :
 
     val themedIcons = BoolPref("themed_icons", false, recreate)
     val drawerThemedIcons = BoolPref("drawer_themed_icons", false, recreate)
-    val tintIconPackBackgrounds = BoolPref("tint_icon_pack_backgrounds", false, recreate)
+    val tintIconPackBackgrounds = BoolPref("tint_icon_pack_backgrounds", false, reloadIconsAndRecreate)
 
     val hotseatQsbCornerRadius = FloatPref("pref_hotseatQsbCornerRadius", 1F, recreate)
     val hotseatQsbAlpha = IntPref("pref_searchHotseatTranparency", 100, recreate)

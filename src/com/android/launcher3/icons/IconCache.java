@@ -543,7 +543,19 @@ public class IconCache extends BaseIconCache {
                 }
                 entry.contentDescription = itemInfo.contentDescription;
 
-                if (loadFallbackIcon) {
+                if (loadFallbackIcon && lai != null) {
+                    // Evergreen: go through cacheLocked() so the rendered icon lands in the
+                    // memory cache. Rendering into a throwaway entry made the all-apps load and
+                    // the update handler render the same icon again on every DB miss.
+                    CacheEntry cached = cacheLocked(cn, sectionKey.first, () -> lai,
+                            mLauncherActivityInfoCachingLogic, /* usePackageIcon= */ false,
+                            /* useLowResIcon= */ false);
+                    entry.bitmap = cached.bitmap;
+                    if (loadFallbackTitle) {
+                        entry.title = cached.title;
+                        entry.contentDescription = cached.contentDescription;
+                    }
+                } else if (loadFallbackIcon) {
                     loadFallbackIcon(
                             lai,
                             entry,
