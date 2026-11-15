@@ -110,6 +110,12 @@ class LawnchairIconProvider @JvmOverloads constructor(
         }
     private val supportsIconTheme get() = themeMap != DISABLED_MAP
 
+    /** Evergreen (EVG-15b): drops the themed icon map; it is rebuilt on the next icon render. */
+    @Synchronized
+    fun trimMemory() {
+        _themeMap = null
+    }
+
     override fun setIconThemeSupported(isSupported: Boolean) {
         // Evergreen: theming follows the preferences (see isThemeEnabled); this only drops the
         // cached map and pack info so they are rebuilt with the current state.

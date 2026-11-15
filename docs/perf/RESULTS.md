@@ -386,6 +386,27 @@ written and read back right away, where a cached value could still be the old on
 Light check (maintenance change): smoke test (home, drawer, search, long press, folder, app
 launch, settings) with no crashes, and an icon dragged to another cell and back.
 
+## Background trim releases icon packs and the themed map (EVG-15b)
+
+`LawnchairApp.onTrimMemory` now drops the parsed icon packs (`IconPackProvider.trimMemory()`,
+Lawnicons parses about 13,000 appfilter entries) and the themed icon map at
+`TRIM_MEMORY_BACKGROUND` and above (and at `RUNNING_CRITICAL`). Both are only needed to render
+icons, which the icon cache makes rare, and are parsed again on the next use. `RecentsModel`
+compared the level with `==`, so it never cleared its caches at the background levels; it now
+does (Recents is provided by the Lenovo launcher on this tablet, so that part is for other
+devices).
+
+Light check, Lawnicons as icon pack, Java heap after a forced GC:
+
+| Step | Java heap | Total PSS |
+|---|---|---|
+| After one icon render (pack parsed) | 15.9 MB | 93.9 MB |
+| After `am send-trim-memory ... BACKGROUND` | 11.2 MB | 76.6 MB |
+| After another render (pack parsed again) | 14.9 MB | 82.4 MB |
+
+About 4.7 MB less Java heap while in the background (part of the PSS drop is the framework's own
+trim). No crashes; icons look the same after the reload.
+
 ## Experiments that were not merged
 
 | Change | Result | Decision |

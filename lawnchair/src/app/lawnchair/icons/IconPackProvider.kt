@@ -43,6 +43,15 @@ class IconPackProvider(private val context: Context) : SafeCloseable {
         }
     }
 
+    /**
+     * Evergreen (EVG-15b): drops the parsed icon packs (Lawnicons: about 13,000 appfilter
+     * entries). They are only needed to render icons, which the icon cache makes rare, and are
+     * parsed again on the next use.
+     */
+    fun trimMemory() {
+        synchronized(iconPacks) { iconPacks.clear() }
+    }
+
     fun getClockMetadata(iconEntry: IconEntry): ClockMetadata? {
         val iconPack = getIconPackOrSystem(iconEntry.packPackageName) ?: return null
         return iconPack.getClock(iconEntry)

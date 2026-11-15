@@ -39,6 +39,8 @@ import androidx.core.content.FileProvider
 import app.lawnchair.evergreen.TabletGridDefaults
 import app.lawnchair.backup.LawnchairBackup
 import app.lawnchair.flowerpot.Flowerpot
+import app.lawnchair.icons.IconPackProvider
+import app.lawnchair.icons.LawnchairIconProvider
 import app.lawnchair.preferences.PreferenceManager
 import app.lawnchair.ui.ModalBottomSheetContent
 import app.lawnchair.ui.preferences.destinations.openAppInfo
@@ -47,6 +49,7 @@ import app.lawnchair.util.unsafeLazy
 import app.lawnchair.views.ComposeBottomSheet
 import com.android.launcher3.BuildConfig
 import com.android.launcher3.InvariantDeviceProfile
+import com.android.launcher3.LauncherAppState
 import com.android.launcher3.Launcher
 import com.android.launcher3.R
 import com.android.launcher3.Utilities
@@ -69,6 +72,20 @@ class LawnchairApp : Application() {
         TabletGridDefaults.apply(this)
         QuickStepContract.sRecentsDisabled = !recentsEnabled
         Flowerpot.Manager.getInstance(this)
+    }
+
+    /**
+     * Evergreen (EVG-15b): release data that is only needed to render icons when the system asks
+     * the process to trim while it is in the background, so the launcher is less likely to be
+     * killed and cold-started on the next return home.
+     */
+    override fun onTrimMemory(level: Int) {
+        super.onTrimMemory(level)
+        if (level >= TRIM_MEMORY_BACKGROUND || level == TRIM_MEMORY_RUNNING_CRITICAL) {
+            IconPackProvider.INSTANCE.get(this).trimMemory()
+            (LauncherAppState.getInstanceNoCreate()?.iconProvider as? LawnchairIconProvider)
+                ?.trimMemory()
+        }
     }
 
     fun hideClockInStatusBar() {
