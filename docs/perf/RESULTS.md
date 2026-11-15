@@ -407,6 +407,32 @@ Light check, Lawnicons as icon pack, Java heap after a forced GC:
 About 4.7 MB less Java heap while in the background (part of the PSS drop is the framework's own
 trim). No crashes; icons look the same after the reload.
 
+## Launcher code shrunk by R8 (EVG-5b)
+
+`proguard.pro` had `-keep class com.android.** { *; }`, which overrode the AOSP rules in
+`proguard.flags` (launcher3 is `keep,allowshrinking`; `systemui.shared` and `quickstep` stay fully
+kept), so none of the launcher code was shrunk. The rule is gone; `-dontoptimize` stays (EVG-5).
+
+| | Control | EVG-5b |
+|---|---|---|
+| APK | 15.8 MB | 14.0 MB |
+| dex | 17.4 MB | 14.5 MB |
+| Cold start, `speed`, 3 interleaved rounds × 4 | 1304 ms mean (1279-1346) | 1291 ms mean (1251-1411) |
+
+Reflection was reviewed: `ResourceBasedOverride` classes, views referenced from XML and manifest
+components are kept by the existing rules, and the remaining `Class.forName` calls target framework
+classes. The smoke test, every settings section, the icon style screen, the widget picker and drawer
+search ran with no crashes.
+
+The settings walk found a crash that predates this change (also in the control build): the About
+screen drew the Evergreen icon with `painterResource()`, which rejects the `layer-list` added in the
+rebrand. It now uses `rememberDrawablePainter`.
+
+The same branch also fixes the Evergreen app icon: its adaptive foreground was a VectorDrawable with
+`<clip-path>`, which Android does not anti-alias, so the tree edges looked jagged; it now uses the
+per-density PNG layers from `docs/branding/generate.py`. The logo scale went from 0.115 to 0.098 so
+the tree's base corners sit about 30 dp from the centre instead of 35.3 dp, inside round masks.
+
 ## Experiments that were not merged
 
 | Change | Result | Decision |
