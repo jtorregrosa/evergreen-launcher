@@ -181,14 +181,16 @@ Columns: priority (P0-P3), impact (I) and risk (R) as High/Medium/Low, effort (E
 
 Active when `ActivityManager.isLowRamDevice()` or `SDK_INT < 31` (configurable in Settings, Performance section). It only changes **default values**: it does not touch what the user has already chosen.
 
+**Closed (2026-11-15): not built.** Each item was either applied unconditionally, measured without gain, or does not apply, so a mode and a Settings switch would carry no measurable benefit. Details per row below and in RESULTS.md.
+
 | ID | P | Default value in modest mode | Basis |
 |---|---|---|---|
-| EVG-20 | P1 | Infrastructure: flag, preference and Settings section | EVG-15b |
-| EVG-21 | P2 | No second icon shadow (EVG-1d) and no double label shadow | `DoubleShadowBubbleTextView.java:62-75` |
-| EVG-22 | P2 | Tablet on API < 31: workspace hidden under the drawer sheet (EVG-8) | — |
-| EVG-23 | P2 | Web suggestions disabled (or with a longer debounce) | EVG-9 / EVG-10 |
-| EVG-24 | P3 | Wallpaper carousel removed from the popup and blurred wallpaper locked | EVG-15c / EVG-19 |
-| EVG-25 | P3 | Fewer pre-inflated views in the drawer (`ALL_APPS_GONE_VISIBILITY`) | `AllAppsRecyclerViewPool.kt:126-131` |
+| EVG-20 | P1 | Infrastructure: flag, preference and Settings section | EVG-15b. **Not built**: nothing left to put behind it |
+| EVG-21 | P2 | No second icon shadow (EVG-1d) and no double label shadow | `DoubleShadowBubbleTextView.java:62-75`. **Measured, no gain** (RESULTS.md, experiments) |
+| EVG-22 | P2 | Tablet on API < 31: workspace hidden under the drawer sheet (EVG-8) | **Done unconditionally** below API 31 in #4 (drawer jank 20.2% → 9.6%) |
+| EVG-23 | P2 | Web suggestions disabled (or with a longer debounce) | EVG-9 / EVG-10. **Measured, default kept**: off saves about 2 points of search-typing jank (12.1% → 9.9%) but removes a visible feature; users can turn it off |
+| EVG-24 | P3 | Wallpaper carousel removed from the popup and blurred wallpaper locked | EVG-15c / EVG-19. **Not needed**: blur is off by default and the carousel was fixed in #25 |
+| EVG-25 | P3 | Fewer pre-inflated views in the drawer (`ALL_APPS_GONE_VISIBILITY`) | `AllAppsRecyclerViewPool.kt:126-131`. **Does not apply**: the flag is disabled, so only 26 views are preinflated, in the background |
 
 ### EVG-M: Measurement items (decide by measuring, not by assuming)
 
