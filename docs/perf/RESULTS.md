@@ -206,7 +206,7 @@ each install: the baseline stayed slow in every round, even right after the fixe
 Every fixed start was faster than every baseline start. The profile is still the December 2023
 one (no `com.android.app.animation` classes); regenerating it is the follow-up.
 
-## Icon cache reloads (SUI-2, SUI-3, #31)
+## Icon cache reloads (SUI-2, SUI-3, #32)
 
 Counted with a temporary log in `LawnchairIconProvider.getIconWithOverrides` (removed before
 merging), Lawnicons as icon pack, 47 icon components on this tablet:
