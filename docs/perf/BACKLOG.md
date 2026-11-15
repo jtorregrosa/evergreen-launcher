@@ -310,6 +310,9 @@ Closed without a code change (see RESULTS.md):
 
 Still open, only relevant with other settings:
 - Plan R4b: folder reveal path; only matters for icon shapes other than the circle.
+- The submodule (`platform_frameworks_libs_systemui`) has its own backlog: `docs/perf/BACKLOG-systemui.md`.
+  It corrects two entries here: EVG-4 (the release APK's profile had no launcher classes, SUI-1) and
+  EVG-3h (grid and preference changes still wipe the icon DB once, SUI-2).
 - EVG-1d / EVG-21 (modest-device mode with lighter shadows): implemented and measured, no gain, so not merged. See RESULTS.md.
 - EVG-6b: systemic preference cache. `cachedValue()` exists; the remaining `firstBlocking()` calls are on cold paths.
 - EVG-8b/8c/8d: only with drawer folders or categories.

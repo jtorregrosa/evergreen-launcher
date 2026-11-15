@@ -180,6 +180,32 @@ Checked on the device: themed icons on the home screen and in the drawer after a
 Lawnicons pack on the home screen, and a manual override from "System icons" applied live and after
 a restart.
 
+## Baseline profile in the release APK (SUI-1, #29)
+
+The GitHub release APK only carried the library profiles (12.9 KB `baseline.prof`, no launcher
+classes) because the app's profile sat in `src/lawnWithQuickstepRelease/`, which no variant uses
+since the `channel` flavor dimension. Moving it to `src/lawnWithQuickstepGithubRelease/` gives a
+25.0 KB `baseline.prof`; the merged profile now has `Launcher` (110 rules), icon code (298) and
+`app/lawnchair` (2278).
+
+Method, 3 interleaved rounds per variant:
+1. Install the APK.
+2. One launch, so the app's ProfileInstaller writes the profile, then wait 12 s.
+3. `cmd package compile -m speed-profile -f` (what the nightly dexopt job does).
+4. 3 cold `am start -W`.
+
+`compile --reset` is refused from adb on this device ("Only the system can clear all profile
+data"). The variants still stayed apart, because ProfileInstaller rewrites the reference profile on
+each install: the baseline stayed slow in every round, even right after the fixed build.
+
+| | TotalTime (median of 9) | Range |
+|---|---|---|
+| Baseline (library-only profile) | 1542 ms | 1515-1632 ms |
+| SUI-1 (app profile packaged) | **1242 ms** (-19%) | 1216-1288 ms |
+
+Every fixed start was faster than every baseline start. The profile is still the December 2023
+one (no `com.android.app.animation` classes); regenerating it is the follow-up.
+
 ## Experiments that were not merged
 
 | Change | Result | Decision |
