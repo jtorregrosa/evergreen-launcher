@@ -258,7 +258,10 @@ public class RecentsModel implements RecentTasksDataSource, IconChangeListener,
         if (level == ComponentCallbacks2.TRIM_MEMORY_UI_HIDDEN) {
             mThumbnailCache.getHighResLoadingState().setVisible(false);
         }
-        if (level == ComponentCallbacks2.TRIM_MEMORY_RUNNING_CRITICAL) {
+        // Evergreen (EVG-15b): also clear at the background levels; '==' missed BACKGROUND,
+        // MODERATE and COMPLETE, the ones a background launcher actually receives.
+        if (level == ComponentCallbacks2.TRIM_MEMORY_RUNNING_CRITICAL
+                || level >= ComponentCallbacks2.TRIM_MEMORY_BACKGROUND) {
             // Clear everything once we reach a low-mem situation
             mThumbnailCache.clear();
             mIconCache.clearCache();
