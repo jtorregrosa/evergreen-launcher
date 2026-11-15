@@ -193,6 +193,12 @@ class ModelCallbacks(private var launcher: Launcher) : BgDataModel.Callbacks {
         Preconditions.assertUIThread()
         val hadWorkApps = launcher.appsView.shouldShowTabs()
         launcher.appsView.appsStore.setApps(apps, flags, packageUserKeytoUidMap)
+        // Evergreen (SUI-7b): build the drawer's themed icon rasters before its first draw.
+        app.lawnchair.icons.ThemedRasterPrewarm.prewarmDrawer(
+            launcher.appsView.context,
+            launcher.deviceProfile.allAppsIconSizePx,
+            apps,
+        )
         PopupContainerWithArrow.dismissInvalidPopup(launcher)
         if (
             hadWorkApps != launcher.appsView.shouldShowTabs() &&
