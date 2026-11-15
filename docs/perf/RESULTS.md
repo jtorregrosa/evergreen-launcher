@@ -331,7 +331,7 @@ Themed icons on, interleaved `ab.sh` against a control built from the same tree,
 Drawer toggle and fling are within the spread. Folder is higher in all 3 rounds (16.8-22.7% against
 23.9-28.7%): the folder animation fades its icons, and themed icons now really draw with that
 alpha (blended) instead of opaque, so some extra cost is expected from the fix itself. Accepted as
-a correctness fix. Note the level: with themed icons on, drawer fling
+a correctness fix; with SUI-7 (below) the faded icon is one bitmap and folder drops to 7.6%. Note the level: with themed icons on, drawer fling
 is about 25% janky against about 6% with them off in earlier runs (SUI-7).
 
 ## Themed icons drawn from a cached raster (SUI-M3, SUI-7)
