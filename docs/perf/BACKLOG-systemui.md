@@ -122,7 +122,7 @@ Priority = impact / (risk × effort). I/R/E = impact / risk / effort.
 | ID | Bug | Evidence | Fix |
 |---|---|---|---|
 | SUI-B1 | A work-profile icon can get the main user's blank badge, or the reverse | `BaseIconFactory.java:161` caches `mUserBadgeBitmap` per pooled factory, regardless of `user` | Fixed in #34: the cache is keyed by user |
-| SUI-B2 | Themed icons ignore fade alpha | `FastBitmapDrawable.setAlpha` (`:184-187`) sets it on `mPaint`, which `ThemedIconDrawable.java:102` `mPaint.setColor(colorBg)` overwrites; the mono drawable never gets it | Apply the alpha after `setColor` and to the mono drawable |
+| SUI-B2 | Themed icons ignore fade alpha | `FastBitmapDrawable.setAlpha` (`:184-187`) sets it on `mPaint`, which `ThemedIconDrawable.java:102` `mPaint.setColor(colorBg)` overwrites; the mono drawable never gets it | Apply the alpha after `setColor` and to the mono drawable. **Fixed** (submodule `61c8116`), see RESULTS.md |
 | SUI-B3 | `LauncherIcons.mMonoIconEnabled` hides `BaseIconFactory.mMonoIconEnabled` | `LauncherIcons.java:63` vs `BaseIconFactory.java:102`; `BaseIconFactory.java:262` and `ClockDrawableWrapper.java:375` always read false | Remove the shadowing field. It has no effect on API 29 (`ATLEAST_T` paths) |
 
 | SUI-B4 | Icon-rendering settings (wrap legacy icons, transparent background, background shadow, background lightness, tint icon pack backgrounds) did not reach cached icons | They only recreated the activity, which re-rendered icons only while upstream wiped the cache on every `onCreate` (removed by EVG-1) | Reload icons from those preferences (fixed in #32) |

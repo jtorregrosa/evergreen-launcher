@@ -313,6 +313,24 @@ SUI-10 (placeholder cross-fade filter) and SUI-16 (wrap-legacy-icons Palette) we
 replacing Palette changes the chosen background colour of wrapped icons. The second
 normalization pass in SUI-16 is also in AOSP.
 
+## Themed icons honour fade alpha (SUI-B2)
+
+`ThemedIconDrawable.drawInternal()` reset the paint alpha with `setColor()`, and the monochrome
+layer never received `setAlpha()`, so themed icons ignored fades (for example while a folder or
+drag animation fades icons). Both layers and the work badge now take the drawable alpha
+(submodule `61c8116`).
+
+Themed icons on, interleaved `ab.sh` against a control built from the same tree, 3 rounds:
+
+| Scenario | Control janky | SUI-B2 janky |
+|---|---|---|
+| drawer_toggle | 9.7% | 7.0% |
+| drawer_fling | 27.9% | 22.9% |
+| folder | 20.1% | 25.6% |
+
+Within the run-to-run spread; no regression. Note the level: with themed icons on, drawer fling
+is about 25% janky against about 6% with them off in earlier runs (SUI-7).
+
 ## Experiments that were not merged
 
 | Change | Result | Decision |
