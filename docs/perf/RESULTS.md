@@ -245,6 +245,27 @@ Interleaved `ab.sh`, 3 rounds:
 The first widgets result came from the run order, not the change: with the order swapped the two
 builds are the same. No regression.
 
+## Themed icon map filtered to installed apps (SUI-8)
+
+With themed icons on, the themed icon map is built on the `launcher-loader` thread at every cold
+start (the animated clock icon is never persisted, so it is rendered and looked up each time) and
+again after every icon-state change. Upstream parsed the whole `grayscale_icon_map` of the pack
+into an `ArrayMap` and kept it for the process. It now keeps only installed packages; a package
+installed later is added on its first lookup miss.
+
+Interleaved, 3 rounds each, Lawnicons as icon pack and themed icon source, measured after a cold
+start plus one icon render (Notes reinstalled), heap after a forced GC:
+
+| Metric | Baseline | SUI-8 |
+|---|---|---|
+| Map entries | 12,935 | 48 |
+| Map build time (loader thread) | 666-673 ms | 159-163 ms |
+| Java heap | 16.6-16.7 MB | 15.5-15.6 MB |
+| Total PSS | 91.8-92.6 MB | 91.0-91.2 MB |
+
+About 0.5 s less loader work per cold start and about 1.1 MB less Java heap, only with themed
+icons on. Nothing changes with themed icons off (the map is never built).
+
 ## Experiments that were not merged
 
 | Change | Result | Decision |
