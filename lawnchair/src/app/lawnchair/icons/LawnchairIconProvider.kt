@@ -54,42 +54,54 @@ class LawnchairIconProvider @JvmOverloads constructor(
 
     private val iconPack
         get() = iconPackProvider.getIconPack(iconPackPref.get())?.apply { loadBlocking() }
-    private val themedIconPack
-        get() = iconPackProvider.getIconPack(themedIconPackPref.get())?.apply { loadBlocking() }
 
     private var isOlderLawniconsInstalled = context.packageManager.getPackageVersionCode(LAWNICONS_PACKAGE_NAME) in 1..3
 
-    private var iconPackVersion = 0L
+    /**
+     * Evergreen: the themed icon pack and its version, resolved from the preferences instead of
+     * as a side effect of the first icon render.
+     *
+     * Upstream only learned that theming was on (and the pack version) once [themeMap] was first
+     * read while rendering an icon. [getSystemIconState] and [getSystemStateForPackage] are read
+     * before that at every start, so with themed icons on every cached icon looked stale and the
+     * whole icon cache was re-rendered on each cold start. The themed pack was also built as a
+     * [CustomIconPack], parsing its whole appfilter, only to read its package name.
+     */
+    @Volatile
+    private var themePack: ThemePack? = null
+
+    private class ThemePack(val packageName: String, val installed: Boolean, val versionCode: Long)
+
+    private fun currentThemePack(): ThemePack {
+        val name = themedIconPackPref.get()
+        themePack?.let { if (it.packageName == name) return it }
+        val pm = context.packageManager
+        val installed = name.isNotEmpty() && pm.isPackageInstalled(packageName = name)
+        return ThemePack(name, installed, if (installed) pm.getPackageVersionCode(name) else 0L)
+            .also { themePack = it }
+    }
 
     private var themeMapName: String = ""
     private var _themeMap: Map<ComponentName, ThemedIconDrawable.ThemeData>? = null
 
     val themeMap: Map<ComponentName, ThemedIconDrawable.ThemeData>
         get() {
-            if (!context.isThemedIconsEnabled()) {
-                _themeMap = DISABLED_MAP
+            if (!isThemeEnabled) return DISABLED_MAP
+            val pack = currentThemePack()
+            val map = _themeMap
+            if (map != null && !isOlderLawniconsInstalled && themeMapName == pack.packageName) {
+                return map
             }
-            if (_themeMap == null) {
-                _themeMap = createThemedIconMap()
-            }
-            if (isOlderLawniconsInstalled) {
-                themeMapName = themedIconPackPref.get()
-                _themeMap = createThemedIconMap()
-            }
-            if (themedIconPack != null && themeMapName != themedIconPack!!.packPackageName) {
-                themeMapName = themedIconPack!!.packPackageName
-                _themeMap = createThemedIconMap()
-            }
-            return _themeMap!!
+            themeMapName = pack.packageName
+            return createThemedIconMap().also { _themeMap = it }
         }
     private val supportsIconTheme get() = themeMap != DISABLED_MAP
 
-    init {
-        setIconThemeSupported(supportsIconTheme)
-    }
-
     override fun setIconThemeSupported(isSupported: Boolean) {
-        _themeMap = if (isSupported && isOlderLawniconsInstalled) null else DISABLED_MAP
+        // Evergreen: theming follows the preferences (see isThemeEnabled); this only drops the
+        // cached map and pack info so they are rebuilt with the current state.
+        _themeMap = null
+        themePack = null
     }
 
     private fun resolveIconEntry(componentName: ComponentName, user: UserHandle): IconEntry? {
@@ -202,7 +214,8 @@ class LawnchairIconProvider @JvmOverloads constructor(
     }
 
     override fun isThemeEnabled(): Boolean {
-        return _themeMap != DISABLED_MAP
+        if (!context.isThemedIconsEnabled()) return false
+        return isOlderLawniconsInstalled || currentThemePack().installed
     }
 
     override fun getThemeData(componentName: ComponentName): ThemedIconDrawable.ThemeData? {
@@ -230,7 +243,8 @@ class LawnchairIconProvider @JvmOverloads constructor(
     }
 
     override fun getSystemIconState(): String {
-        return super.getSystemIconState() + ",pack:${iconPackPref.get()}/${themedIconPackPref.get()},ver:$iconPackVersion"
+        val version = if (isThemeEnabled) currentThemePack().versionCode else 0L
+        return super.getSystemIconState() + ",pack:${iconPackPref.get()}/${themedIconPackPref.get()},ver:$version"
     }
 
     override fun registerIconChangeListener(
@@ -281,9 +295,11 @@ class LawnchairIconProvider @JvmOverloads constructor(
         }
 
         private fun recreateCalendarAndClockChangeReceiver() {
-            val iconPack = IconPackProvider.INSTANCE.get(context).getIconPack(iconPackPref.get())
-            calendarAndClockChangeReceiver = if (iconPack != null) {
-                CalendarAndClockChangeReceiver(context, handler, iconPack, callback)
+            // Evergreen: pass only the package name. Creating the pack here parsed its whole
+            // appfilter at every start, even when the icon cache was warm and no icon was drawn.
+            val packageName = iconPackPref.get()
+            calendarAndClockChangeReceiver = if (packageName.isNotEmpty()) {
+                CalendarAndClockChangeReceiver(context, handler, packageName, callback)
             } else {
                 null
             }
@@ -299,7 +315,7 @@ class LawnchairIconProvider @JvmOverloads constructor(
     private class CalendarAndClockChangeReceiver(
         private val context: Context,
         handler: Handler,
-        private val iconPack: IconPack,
+        private val iconPackPackage: String,
         private val callback: IconChangeListener,
     ) : BroadcastReceiver(),
         SafeCloseable {
@@ -314,6 +330,8 @@ class LawnchairIconProvider @JvmOverloads constructor(
         }
 
         override fun onReceive(context: Context, intent: Intent) {
+            val iconPack = IconPackProvider.INSTANCE.get(context).getIconPack(iconPackPackage)
+                ?.apply { loadBlocking() } ?: return
             when (intent.action) {
                 ACTION_TIMEZONE_CHANGED, ACTION_TIME_CHANGED -> {
                     context.getSystemService<UserManager>()?.userProfiles?.forEach { user ->
@@ -353,14 +371,15 @@ class LawnchairIconProvider @JvmOverloads constructor(
             filter.addAction(ACTION_PACKAGE_CHANGED)
             filter.addAction(ACTION_PACKAGE_REMOVED)
             filter.addDataScheme("package")
-            filter.addDataSchemeSpecificPart(themeMapName, 0)
+            // Evergreen: the preference, not themeMapName, which was still empty here because the
+            // map is built lazily, so this receiver never matched the themed pack.
+            filter.addDataSchemeSpecificPart(themedIconPackPref.get(), 0)
             context.registerReceiver(this, filter, null, handler)
         }
 
         override fun onReceive(context: Context, intent: Intent) {
-            if (isThemeEnabled) {
-                setIconThemeSupported(true)
-            }
+            // Drop the cached pack info so an install, update or removal is picked up.
+            setIconThemeSupported(true)
             callback.onSystemIconStateChanged(systemIconState)
         }
 
@@ -403,8 +422,7 @@ class LawnchairIconProvider @JvmOverloads constructor(
             resources = context.resources,
             packageName = context.packageName,
         )
-        if (context.packageManager.isPackageInstalled(packageName = themeMapName)) {
-            iconPackVersion = context.packageManager.getPackageVersionCode(themeMapName)
+        if (themeMapName.isNotEmpty() && context.packageManager.isPackageInstalled(packageName = themeMapName)) {
             updateMapFromResources(
                 resources = context.packageManager.getResourcesForApplication(themeMapName),
                 packageName = themeMapName,
