@@ -158,6 +158,28 @@ rounds (`ab.sh`, baseline `f8a4c47` against the fixes), the tablet was in its sl
 
 No regression; `smoke.sh` clean. The release APK drops from 16.97 to 16.04 MB (no x86 libraries).
 
+## Icon packs and themed icons (#27)
+
+Measured with Lawnicons 2.18 on the tablet, with temporary logs that counted icon renders and timed
+the pack's appfilter load (removed before merging). Each cold start is `am start -W` after a
+force-stop, with the icon cache already warm.
+
+| Setting | Baseline | Fixes |
+|---|---|---|
+| Lawnicons as themed icons: icons re-rendered on every cold start | **47** (about 0.8 s of model-thread CPU, ~18 ms per icon) | **0** |
+| Lawnicons as themed icons: icons shown after a warm cold start | themed (only because they were re-rendered) | themed, read from the cache |
+| Lawnicons as icon pack: appfilter parsed on every cold start | yes, ~300 ms on an IO thread | no (only when an icon has to be drawn) |
+| Lawnicons as icon pack: TTID, 3 interleaved rounds x 3 starts (median) | 1586 ms | **1547 ms** |
+
+Every fixed start but one was faster than every baseline start. The baseline state string said
+`no-theme` while themed icons were on, so every cached icon looked stale. Fixing only that exposed
+a second bug in the submodule: themed icons read from the cache were drawn without their theme,
+because `ThemedBitmapInfo` lost its subclass when `withFlags()` cloned it.
+
+Checked on the device: themed icons on the home screen and in the drawer after a cold start, the
+Lawnicons pack on the home screen, and a manual override from "System icons" applied live and after
+a restart.
+
 ## Experiments that were not merged
 
 | Change | Result | Decision |

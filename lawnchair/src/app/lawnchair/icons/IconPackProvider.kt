@@ -17,10 +17,14 @@ import com.android.launcher3.util.SafeCloseable
 
 class IconPackProvider(private val context: Context) : SafeCloseable {
 
+    // Evergreen: read from the model thread, the UI and receivers, so access is synchronized.
     private val iconPacks = mutableMapOf<String, IconPack?>()
 
+    // Evergreen: one instance instead of a new one (with a full activity list) on every call.
+    private val systemIconPack by lazy { SystemIconPack(context, "") }
+
     fun getIconPackOrSystem(packageName: String): IconPack? {
-        if (packageName.isEmpty()) return SystemIconPack(context, packageName)
+        if (packageName.isEmpty()) return systemIconPack
         return getIconPack(packageName)
     }
 
@@ -28,11 +32,13 @@ class IconPackProvider(private val context: Context) : SafeCloseable {
         if (packageName.isEmpty()) {
             return null
         }
-        return iconPacks.getOrPut(packageName) {
-            try {
-                CustomIconPack(context, packageName)
-            } catch (_: PackageManager.NameNotFoundException) {
-                null
+        return synchronized(iconPacks) {
+            iconPacks.getOrPut(packageName) {
+                try {
+                    CustomIconPack(context, packageName)
+                } catch (_: PackageManager.NameNotFoundException) {
+                    null
+                }
             }
         }
     }

@@ -3,6 +3,7 @@ package app.lawnchair.icons
 import android.content.ComponentName
 import android.content.Context
 import android.graphics.drawable.Drawable
+import android.os.Trace
 import com.android.launcher3.compat.AlphabeticIndexCompat
 import java.util.concurrent.Semaphore
 import kotlinx.coroutines.CoroutineName
@@ -17,6 +18,8 @@ sealed class IconPack(
     protected val context: Context,
     val packPackageName: String,
 ) {
+    // Evergreen: volatile so a reader that sees the load as finished also sees the parsed maps.
+    @Volatile
     private var waiter: Semaphore? = Semaphore(0)
     private lateinit var deferredLoad: Deferred<Unit>
 
@@ -26,7 +29,12 @@ sealed class IconPack(
 
     protected fun startLoad() {
         deferredLoad = scope.async(Dispatchers.IO) {
-            loadInternal()
+            Trace.beginSection("IconPack.load")
+            try {
+                loadInternal()
+            } finally {
+                Trace.endSection()
+            }
             waiter?.release()
             waiter = null
         }
