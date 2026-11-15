@@ -290,6 +290,29 @@ drawer_toggle 3.6% → 7.6%, with the slow frames dominated by GPU time; the con
 the same tree shows the same high state, so that gap came from the build or the GPU state, not
 from the change. Compare only APKs built from the same tree.
 
+## Themed icon resources memoized for DB decodes (SUI-5)
+
+Every themed icon read from the icon DB ran `getResourcesForApplication` (a binder call) and
+`getIdentifier` for its drawable. `BaseIconCache` now memoizes the resources per package and the
+drawable id per `(package, name)`, and clears both with the memory cache and when the icon
+parameters change (icon pack, themed source or Lawnicons updates go through that path). Submodule
+`9f8c5d3`. Merged as good practice.
+
+Themed icons on (Lawnicons), interleaved against a control built from the same tree, 3 installs
+of each with 4 cold starts per install:
+
+| Build | Cold start TotalTime |
+|---|---|
+| Control | 1354 ms mean (1331-1382) |
+| SUI-5 | 1348 ms mean (1314-1364) |
+
+No regression; the drawer shows the same themed icons.
+
+SUI-10 (placeholder cross-fade filter) and SUI-16 (wrap-legacy-icons Palette) were not changed:
+`PorterDuffColorFilter` is immutable, so reusing one would change how the fade looks, and
+replacing Palette changes the chosen background colour of wrapped icons. The second
+normalization pass in SUI-16 is also in AOSP.
+
 ## Experiments that were not merged
 
 | Change | Result | Decision |
