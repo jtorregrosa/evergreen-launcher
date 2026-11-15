@@ -334,6 +334,37 @@ alpha (blended) instead of opaque, so some extra cost is expected from the fix i
 a correctness fix. Note the level: with themed icons on, drawer fling
 is about 25% janky against about 6% with them off in earlier runs (SUI-7).
 
+## Themed icons drawn from a cached raster (SUI-M3, SUI-7)
+
+**SUI-M3**, same build, themed icons toggled on and off between runs (1 round):
+
+| Scenario | Themed on | Themed off |
+|---|---|---|
+| drawer_toggle | 13.6% | 2.8% |
+| drawer_fling | 23.1% | 7.9% |
+
+Each themed icon drew a path, a vector and the badge every frame, and each bind inflated and
+mutated the monochrome vector. **SUI-7** (submodule `4bc6b1a`) rasterizes the background and
+monochrome layer once per `ThemedBitmapInfo`, size and colours, and draws one bitmap with the
+drawable's paint (alpha and disabled filter kept). The raster lives on the bitmap info, which
+survives rebinds (a per-drawable cache would be rebuilt on every drawer bind, the SUI-9 lesson),
+with two slots so a folder item can be both in the preview and in the open folder.
+
+Themed icons on, interleaved `ab.sh` against a control built from the same tree (SUI-B2 only),
+3 rounds:
+
+| Scenario | Control janky | SUI-7 janky |
+|---|---|---|
+| drawer_toggle | 7.0% | 5.4% |
+| drawer_fling | 21.3% | 6.3% |
+| folder | 24.4% | 7.6% |
+
+Themed icons now cost about the same as plain icons. The drawer and home screen look the same
+(screenshots compared). Memory with the drawer open: Native Heap 16.9 MB, Graphics 33.1 MB, in
+line with earlier runs. Known cost: the first drawer open after a start rasterizes the visible
+icons in one frame (max frame about 90 ms in each SUI-7 round, once). Follow-up SUI-7b: build the
+rasters off the UI thread.
+
 ## Experiments that were not merged
 
 | Change | Result | Decision |
