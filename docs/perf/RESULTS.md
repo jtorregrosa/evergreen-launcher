@@ -433,6 +433,30 @@ The same branch also fixes the Evergreen app icon: its adaptive foreground was a
 per-density PNG layers from `docs/branding/generate.py`. The logo scale went from 0.115 to 0.098 so
 the tree's base corners sit about 30 dp from the centre instead of 35.3 dp, inside round masks.
 
+## DeviceProfile preference reads shared per message (EVG-3g)
+
+A temporary build timed `DeviceProfile.Builder.build()`: a cold start builds four profiles on the
+main thread, 124-168 ms in total (the first 76-119 ms, including the first DataStore load; the others
+13-21 ms each). `simpleperf` (the app is profileable) showed most of each profile is
+`firstBlocking()` reads: a `runBlocking` event loop plus the exception `first()` throws to stop the
+flow, with its stack walk. Each profile reads about 17 preferences.
+
+`MessageScopedPrefs` memoizes a read until the next main-thread message (`postAtFrontOfQueue`
+clears it), and `DeviceProfile` (11 reads) and `DeviceProfileOverrides.TextFactors` (6) use it. The
+four profiles of a cold start share one read per preference. A preference change is always handled
+in a later message, so it is read fresh; this is why `cachedValue()` (updated asynchronously) was not
+used here. Grid preferences keep their direct reads.
+
+Interleaved cold starts (`speed`), 3 rounds × 4 against a same-tree control:
+
+| Build | Cold start TotalTime |
+|---|---|
+| Control | 1292 ms mean (1251-1432; 1280 ms without the 1432 outlier) |
+| EVG-3g | 1242 ms mean (1219-1266) |
+
+About 40-50 ms faster, lower in every round. Turning the dock off and on in Settings relaid out the
+home screen both ways, with no stale values and no crashes.
+
 ## Experiments that were not merged
 
 | Change | Result | Decision |

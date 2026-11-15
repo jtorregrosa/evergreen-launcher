@@ -3,6 +3,7 @@ package app.lawnchair
 import android.content.Context
 import app.lawnchair.preferences.PreferenceManager
 import app.lawnchair.preferences2.PreferenceManager2
+import app.lawnchair.preferences2.MessageScopedPrefs
 import app.lawnchair.preferences2.firstBlocking
 import com.android.launcher3.InvariantDeviceProfile
 import com.android.launcher3.InvariantDeviceProfile.INDEX_DEFAULT
@@ -127,12 +128,13 @@ class DeviceProfileOverrides(context: Context) : SafeCloseable {
         constructor(
             prefs2: PreferenceManager2,
         ) : this(
-            enableIconText = prefs2.showIconLabelsOnHomeScreen.firstBlocking(),
-            iconTextSizeFactor = prefs2.homeIconLabelSizeFactor.firstBlocking(),
-            enableIconTextFolder = prefs2.showIconLabelsOnHomeScreenFolder.firstBlocking(),
-            iconFolderTextSizeFactor = prefs2.homeIconLabelFolderSizeFactor.firstBlocking(),
-            enableAllAppsIconText = prefs2.showIconLabelsInDrawer.firstBlocking(),
-            allAppsIconTextSizeFactor = prefs2.drawerIconLabelSizeFactor.firstBlocking(),
+            // Evergreen (EVG-3g): built once per DeviceProfile; share reads within the message.
+            enableIconText = MessageScopedPrefs.get(prefs2.showIconLabelsOnHomeScreen),
+            iconTextSizeFactor = MessageScopedPrefs.get(prefs2.homeIconLabelSizeFactor),
+            enableIconTextFolder = MessageScopedPrefs.get(prefs2.showIconLabelsOnHomeScreenFolder),
+            iconFolderTextSizeFactor = MessageScopedPrefs.get(prefs2.homeIconLabelFolderSizeFactor),
+            enableAllAppsIconText = MessageScopedPrefs.get(prefs2.showIconLabelsInDrawer),
+            allAppsIconTextSizeFactor = MessageScopedPrefs.get(prefs2.drawerIconLabelSizeFactor),
         )
 
         constructor(

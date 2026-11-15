@@ -112,7 +112,7 @@ Columns: priority (P0-P3), impact (I) and risk (R) as High/Medium/Low, effort (E
 | EVG-3d | P2 | The bug reporter does 3 IPCs and disk I/O before `Application.onCreate` | `LawnchairBugReporter.kt:23-54` | Keep only the `UncaughtExceptionHandler`; move the rest to `UI_HELPER_EXECUTOR` | L/L/S | CONFIRMED |
 | EVG-3e | P3 | Inter fonts (about 580 KB) parsed on the main thread at process start | `FontCache.kt:71-74,350`, `MainProcessInitializer.java:47` | Lazy `Typeface` on IO | L-M/M/M | HYPOTHESIS |
 | EVG-3f | P3 | Loading priority of the visible workspace | `FeatureFlags.java:124-127` (`ENABLE_WORKSPACE_LOADING_OPTIMIZATION` disabled) | Try enabling it and measure TTID | M/M/S | HYPOTHESIS |
-| EVG-3g | P3 | `DeviceProfile`: 17 to 25 reads per profile and a new `TextFactors` per call | `DeviceProfile.java:352,1160-1195`, `DeviceProfileOverrides.kt:58,92-135` | Immutable snapshot of the prefs per IDP | M/M/M | CONFIRMED |
+| EVG-3g | P3 | `DeviceProfile`: 17 to 25 reads per profile and a new `TextFactors` per call | `DeviceProfile.java:352,1160-1195`, `DeviceProfileOverrides.kt:58,92-135` | Immutable snapshot of the prefs per IDP | M/M/M | CONFIRMED. **Fixed:** reads shared within the main-thread message (`MessageScopedPrefs`); 4 profiles per cold start took 124-168 ms; cold start 1292 → 1242 ms. See RESULTS.md |
 
 ### EVG-E9: Build and profiles
 

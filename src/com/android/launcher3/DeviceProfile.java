@@ -74,7 +74,6 @@ import com.android.launcher3.util.DisplayController.Info;
 import com.android.launcher3.util.IconSizeSteps;
 import com.android.launcher3.util.ResourceHelper;
 import com.android.launcher3.util.WindowBounds;
-import com.patrykmichalik.opto.core.PreferenceExtensionsKt;
 import com.android.launcher3.util.window.WindowManagerProxy;
 
 import java.io.PrintWriter;
@@ -82,6 +81,7 @@ import java.util.Locale;
 import java.util.function.Consumer;
 
 import app.lawnchair.DeviceProfileOverrides;
+import app.lawnchair.preferences2.MessageScopedPrefs;
 import app.lawnchair.LawnchairApp;
 import app.lawnchair.LawnchairAppKt;
 import app.lawnchair.hotseat.HotseatMode;
@@ -352,8 +352,7 @@ public class DeviceProfile {
         mTextFactors = DeviceProfileOverrides.INSTANCE.get(context).getTextFactors();
 
         preferenceManager2 = PreferenceManager2.INSTANCE.get(context);
-        allAppsCellHeightMultiplier = PreferenceExtensionsKt
-                .firstBlocking(preferenceManager2.getDrawerCellHeightFactor());
+        allAppsCellHeightMultiplier = MessageScopedPrefs.get(preferenceManager2.getDrawerCellHeightFactor());
         this.inv = inv;
         this.isLandscape = windowBounds.isLandscape();
         this.isMultiWindowMode = isMultiWindowMode;
@@ -379,7 +378,7 @@ public class DeviceProfile {
         isTablet = info.isTablet(windowBounds);
         isPhone = !isTablet;
         isTwoPanels = isMultiDisplay;
-        boolean isTaskBarEnabled = PreferenceExtensionsKt.firstBlocking(preferenceManager2.getEnableTaskbarOnPhone());
+        boolean isTaskBarEnabled = MessageScopedPrefs.get(preferenceManager2.getEnableTaskbarOnPhone());
         isTaskbarPresent = isTaskBarEnabled && (isTablet || (enableTinyTaskbar() && isGestureMode))
                 && WindowManagerProxy.INSTANCE.get(context).isTaskbarDrawnInProcess();
 
@@ -525,8 +524,7 @@ public class DeviceProfile {
 
         workspacePageIndicatorHeight = res.getDimensionPixelSize(
                 R.dimen.workspace_page_indicator_height);
-        float pageIndicatorHeightFactor = PreferenceExtensionsKt
-            .firstBlocking(preferenceManager2.getPageIndicatorHeightFactor());
+        float pageIndicatorHeightFactor = MessageScopedPrefs.get(preferenceManager2.getPageIndicatorHeightFactor());
         
         workspacePageIndicatorHeight *= (int) pageIndicatorHeightFactor;
         mWorkspacePageIndicatorOverlapWorkspace = res
@@ -574,7 +572,7 @@ public class DeviceProfile {
 
         workspaceCellPaddingXPx = res.getDimensionPixelSize(R.dimen.dynamic_grid_cell_padding_x);
 
-        HotseatMode hotseatMode = PreferenceExtensionsKt.firstBlocking(preferenceManager2.getHotseatMode());
+        HotseatMode hotseatMode = MessageScopedPrefs.get(preferenceManager2.getHotseatMode());
         boolean isQsbEnable = hotseatMode.getLayoutResourceId() != R.layout.empty_view;
 
         hotseatQsbHeight = isQsbEnable ? res.getDimensionPixelSize(R.dimen.qsb_widget_height) : 0;
@@ -808,8 +806,7 @@ public class DeviceProfile {
         dimensionOverrideProvider.accept(this);
 
         // Check if notification dots should show the notification count
-        boolean showNotificationCount = PreferenceExtensionsKt
-                .firstBlocking(preferenceManager2.getShowNotificationCount());
+        boolean showNotificationCount = MessageScopedPrefs.get(preferenceManager2.getShowNotificationCount());
 
         // Load the default font to use on notification dots
         Typeface typeface = null;
@@ -818,12 +815,11 @@ public class DeviceProfile {
         }
 
         // Load dot color
-        ColorOption dotColorOption = PreferenceExtensionsKt.firstBlocking(preferenceManager2.getNotificationDotColor());
+        ColorOption dotColorOption = MessageScopedPrefs.get(preferenceManager2.getNotificationDotColor());
         int dotColor = dotColorOption.getColorPreferenceEntry().getLightColor().invoke(context);
 
         // Load counter color
-        ColorOption counterColorOption = PreferenceExtensionsKt
-                .firstBlocking(preferenceManager2.getNotificationDotTextColor());
+        ColorOption counterColorOption = MessageScopedPrefs.get(preferenceManager2.getNotificationDotTextColor());
         int countColor = counterColorOption.getColorPreferenceEntry().getLightColor().invoke(context);
 
         // This is done last, after iconSizePx is calculated above.
@@ -936,7 +932,7 @@ public class DeviceProfile {
         // Ensure there is enough space for folder icons, which have a slightly larger
         // radius.
         int iconTextHeight = Utilities.calculateTextHeight(iconTextSizePx);
-        var isLabelInDock = PreferenceExtensionsKt.firstBlocking(preferenceManager2.getEnableLabelInDock());
+        var isLabelInDock = MessageScopedPrefs.get(preferenceManager2.getEnableLabelInDock());
 
         hotseatCellHeightPx = getIconSizeWithOverlap(hotseatIconSizePx * 2) - hotseatIconSizePx / 2;
         hotseatCellHeightPx += isLabelInDock ? iconTextHeight : 0;
@@ -944,8 +940,7 @@ public class DeviceProfile {
 
         var space = Math.abs(hotseatCellHeightPx / 2) - 16;
 
-        hotseatBarBottomSpacePx *= PreferenceExtensionsKt
-                .firstBlocking(preferenceManager2.getHotseatBottomFactor());
+        hotseatBarBottomSpacePx *= MessageScopedPrefs.get(preferenceManager2.getHotseatBottomFactor());
 
         if (isVerticalBarLayout()) {
             hotseatBarSizePx = hotseatIconSizePx + mHotseatBarEdgePaddingPx
@@ -960,7 +955,7 @@ public class DeviceProfile {
                     + hotseatBarBottomSpacePx
                     + space;
         }
-        var isHotseatEnabled = PreferenceExtensionsKt.firstBlocking(preferenceManager2.isHotseatEnabled());
+        var isHotseatEnabled = MessageScopedPrefs.get(preferenceManager2.isHotseatEnabled());
         if (!isHotseatEnabled) {
             hotseatBarSizePx = 0;
         }
@@ -1537,8 +1532,7 @@ public class DeviceProfile {
                 desiredWorkspaceHorizontalMarginPx + cellLayoutHorizontalPadding 
                     - (allAppsBorderSpacePx.x / 2));
         }
-        var allAppLeftRightMarginMultiplier = PreferenceExtensionsKt
-                .firstBlocking(preferenceManager2.getDrawerLeftRightMarginFactor());
+        var allAppLeftRightMarginMultiplier = MessageScopedPrefs.get(preferenceManager2.getDrawerLeftRightMarginFactor());
         var marginMultiplier = allAppLeftRightMarginMultiplier * (!isTablet ? 100 : 2);
         allAppsLeftRightMargin = (int) (allAppsLeftRightMargin * marginMultiplier);
 
