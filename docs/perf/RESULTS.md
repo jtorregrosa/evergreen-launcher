@@ -313,6 +313,58 @@ SUI-10 (placeholder cross-fade filter) and SUI-16 (wrap-legacy-icons Palette) we
 replacing Palette changes the chosen background colour of wrapped icons. The second
 normalization pass in SUI-16 is also in AOSP.
 
+## Themed icons honour fade alpha (SUI-B2)
+
+`ThemedIconDrawable.drawInternal()` reset the paint alpha with `setColor()`, and the monochrome
+layer never received `setAlpha()`, so themed icons ignored fades (for example while a folder or
+drag animation fades icons). Both layers and the work badge now take the drawable alpha
+(submodule `61c8116`).
+
+Themed icons on, interleaved `ab.sh` against a control built from the same tree, 3 rounds:
+
+| Scenario | Control janky | SUI-B2 janky |
+|---|---|---|
+| drawer_toggle | 9.7% | 7.0% |
+| drawer_fling | 27.9% | 22.9% |
+| folder | 20.1% | 25.6% |
+
+Drawer toggle and fling are within the spread. Folder is higher in all 3 rounds (16.8-22.7% against
+23.9-28.7%): the folder animation fades its icons, and themed icons now really draw with that
+alpha (blended) instead of opaque, so some extra cost is expected from the fix itself. Accepted as
+a correctness fix; with SUI-7 (below) the faded icon is one bitmap and folder drops to 7.6%. Note the level: with themed icons on, drawer fling
+is about 25% janky against about 6% with them off in earlier runs (SUI-7).
+
+## Themed icons drawn from a cached raster (SUI-M3, SUI-7)
+
+**SUI-M3**, same build, themed icons toggled on and off between runs (1 round):
+
+| Scenario | Themed on | Themed off |
+|---|---|---|
+| drawer_toggle | 13.6% | 2.8% |
+| drawer_fling | 23.1% | 7.9% |
+
+Each themed icon drew a path, a vector and the badge every frame, and each bind inflated and
+mutated the monochrome vector. **SUI-7** (submodule `4bc6b1a`) rasterizes the background and
+monochrome layer once per `ThemedBitmapInfo`, size and colours, and draws one bitmap with the
+drawable's paint (alpha and disabled filter kept). The raster lives on the bitmap info, which
+survives rebinds (a per-drawable cache would be rebuilt on every drawer bind, the SUI-9 lesson),
+with two slots so a folder item can be both in the preview and in the open folder.
+
+Themed icons on, interleaved `ab.sh` against a control built from the same tree (SUI-B2 only),
+3 rounds:
+
+| Scenario | Control janky | SUI-7 janky |
+|---|---|---|
+| drawer_toggle | 7.0% | 5.4% |
+| drawer_fling | 21.3% | 6.3% |
+| folder | 24.4% | 7.6% |
+
+Themed icons now cost about the same as plain icons. The drawer and home screen look the same
+(screenshots compared). Memory with the drawer open: Native Heap 16.9 MB, Graphics 33.1 MB, in
+line with earlier runs. Known cost: the first drawer open after a start rasterizes the visible
+icons in one frame (max frame about 90 ms in each SUI-7 round, once). Follow-up SUI-7b: build the
+rasters off the UI thread.
+
 ## Experiments that were not merged
 
 | Change | Result | Decision |

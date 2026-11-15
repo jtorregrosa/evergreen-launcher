@@ -42,7 +42,7 @@ stats drawer
 
 # 3) Drawer search: tap the search bar, type a query letter by letter, clear, repeat
 $ADB shell dumpsys gfxinfo $PKG reset >/dev/null
-focus() { $ADB shell dumpsys window | tr -d '\r' | grep -m1 mCurrentFocus; }
+focus() { $ADB shell dumpsys window displays | tr -d '\r' | grep -m1 mCurrentFocus; }
 bad=0
 for q in goo mapa you cal; do
   $ADB shell input swipe 600 1200 600 300 250; sleep 1.5
