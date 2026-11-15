@@ -41,10 +41,10 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import androidx.core.content.ContextCompat
 import androidx.core.net.toUri
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -59,6 +59,7 @@ import app.lawnchair.ui.preferences.components.layout.preferenceGroupItems
 import app.lawnchair.ui.preferences.navigation.AboutLicenses
 import com.android.launcher3.BuildConfig
 import com.android.launcher3.R
+import com.google.accompanist.drawablepainter.rememberDrawablePainter
 import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -108,8 +109,11 @@ fun About(
                     .fillMaxWidth(),
                 horizontalArrangement = Arrangement.Center,
             ) {
+                // Evergreen: the composite icon is a layer-list, which painterResource() rejects
+                // ("Only VectorDrawables and rasterized asset types are supported").
+                val iconDrawable = remember { ContextCompat.getDrawable(context, R.drawable.ic_launcher_home_comp) }
                 Image(
-                    painter = painterResource(id = R.drawable.ic_launcher_home_comp),
+                    painter = rememberDrawablePainter(drawable = iconDrawable),
                     contentDescription = null,
                     modifier = Modifier
                         .size(72.dp)
