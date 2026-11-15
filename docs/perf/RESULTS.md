@@ -266,6 +266,30 @@ start plus one icon render (Notes reinstalled), heap after a forced GC:
 About 0.5 s less loader work per cold start and about 1.1 MB less Java heap, only with themed
 icons on. Nothing changes with themed icons off (the map is never built).
 
+## Icon prefs and attribute caching (SUI-13 to SUI-15)
+
+Small good-practice changes in the submodule (`f85f7f7`), merged without a measurable gain:
+
+- **SUI-13:** the icon `SharedPreferences` instance is cached instead of looked up on every icon
+  render and themed bind.
+- **SUI-14:** `disabledIconAlpha` is cached for the last theme instead of an
+  `obtainStyledAttributes` call on every icon bind (UI thread, also while scrolling the drawer).
+- **SUI-15:** a plain loop instead of a stream in the per-render dynamic calendar check, and the
+  calendar icon `TypedArray` is now recycled.
+
+Interleaved `ab.sh` against a control APK built from the same worktree without the change,
+4 rounds:
+
+| Scenario | Control janky | SUI-13 to 15 janky |
+|---|---|---|
+| drawer_toggle | 7.8% | 6.1% |
+| drawer_fling | 6.9% | 6.3% |
+
+No regression. A first comparison against an APK built earlier in another worktree showed
+drawer_toggle 3.6% → 7.6%, with the slow frames dominated by GPU time; the control built from
+the same tree shows the same high state, so that gap came from the build or the GPU state, not
+from the change. Compare only APKs built from the same tree.
+
 ## Experiments that were not merged
 
 | Change | Result | Decision |
