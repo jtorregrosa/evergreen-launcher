@@ -8,13 +8,15 @@
 # after replacing the round number, e.g. `sed 's/^\([AB]\)[0-9]*,/\1,/' ab.txt > ab-by-build.txt`.
 #
 # HOME_COMPONENT: the default launcher to restore after every install
-#                 (default: app.lawnchair/.LawnchairLauncher)
+#                 (default: Evergreen itself). For cold-start runs set another launcher, e.g.
+#                 com.tblenovo.launcher/com.android.searchlauncher.SearchLauncher on the Lenovo
+#                 tablet: the system relaunches a force-stopped HOME app on its own.
 set -u
 OUT=${1:?usage}; ROUNDS=${2:?usage}; APK_A=${3:?usage}; APK_B=${4:?usage}; shift 4
 mkdir -p "$OUT"
 ADB="${ADB_BIN:-adb} -s ${ADB_SERIAL:?set ADB_SERIAL to the test device serial}"
 PKG=io.github.jtorregrosa.evergreen
-HOME_COMPONENT=${HOME_COMPONENT:-app.lawnchair/.LawnchairLauncher}
+HOME_COMPONENT=${HOME_COMPONENT:-$PKG/app.lawnchair.LawnchairLauncher}
 
 install() {
   $ADB install -r "$1" >/dev/null || { echo "install failed: $1"; exit 1; }
