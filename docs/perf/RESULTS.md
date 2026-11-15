@@ -206,6 +206,21 @@ each install: the baseline stayed slow in every round, even right after the fixe
 Every fixed start was faster than every baseline start. The profile is still the December 2023
 one (no `com.android.app.animation` classes); regenerating it is the follow-up.
 
+## Icon cache reloads (SUI-2, SUI-3, #32)
+
+Counted with a temporary log in `LawnchairIconProvider.getIconWithOverrides` (removed before
+merging), Lawnicons as icon pack, 47 icon components on this tablet:
+
+| Action | Baseline renders | Fixes renders |
+|---|---|---|
+| Switch icon pack (system ↔ Lawnicons; wipes the cache) | 61 (47 unique: 14 rendered twice) | **47** |
+| Rename one app (a `reloadGrid` preference) | 64 (whole cache) | **3** (only that app) |
+| Toggle "Wrap legacy icons" | **0** (setting not applied to cached icons) | 47 |
+
+The last row was a regression from EVG-1. Upstream re-rendered every icon on each `onCreate`, so
+icon-rendering preferences only recreated the activity. Once the cache survived, they no longer
+reached cached icons. Checked on the device: the renamed label shows and reverts.
+
 ## Experiments that were not merged
 
 | Change | Result | Decision |

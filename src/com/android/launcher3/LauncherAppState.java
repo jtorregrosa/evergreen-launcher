@@ -88,6 +88,9 @@ public class LauncherAppState implements SafeCloseable {
     private final LauncherModel mModel;
     private final IconProvider mIconProvider;
     private final IconCache mIconCache;
+    // Evergreen: icon density and size the icon cache was last built with (reloadAfterGridChange).
+    private int mAppliedIconDpi;
+    private int mAppliedIconSize;
     private final InvariantDeviceProfile mInvariantDeviceProfile;
     private boolean mIsSafeModeEnabled;
 
@@ -115,7 +118,7 @@ public class LauncherAppState implements SafeCloseable {
                 () -> context.getPackageManager().isSafeMode());
         mInvariantDeviceProfile.addOnChangeListener(modelPropertiesChanged -> {
             if (modelPropertiesChanged) {
-                refreshAndReloadLauncher();
+                reloadAfterGridChange();
             }
         });
 
@@ -193,6 +196,8 @@ public class LauncherAppState implements SafeCloseable {
         mIconProvider = new LawnchairIconProvider(context, Themes.isThemedIconEnabled(context));
         mIconCache = new IconCache(mContext, mInvariantDeviceProfile,
                 iconCacheFileName, mIconProvider);
+        mAppliedIconDpi = mInvariantDeviceProfile.fillResIconDpi;
+        mAppliedIconSize = mInvariantDeviceProfile.iconBitmapSize;
         mModel = new LauncherModel(context, this, mIconCache, new AppFilter(mContext),
                 PackageManagerHelper.INSTANCE.get(context), iconCacheFileName != null);
         mOnTerminateCallback.add(mIconCache::close);
@@ -221,6 +226,21 @@ public class LauncherAppState implements SafeCloseable {
         refreshAndReloadLauncher();
     }
 
+    /**
+     * Evergreen: reload after a grid or preference change (InvariantDeviceProfile). The icon DB
+     * and memory cache are only wiped when the icon size or density changed; anything else
+     * (folder rows, hotseat columns, labels, list order) only needs a model reload. Upstream
+     * wiped and re-rendered every icon on each of these changes.
+     */
+    public void reloadAfterGridChange() {
+        if (mInvariantDeviceProfile.fillResIconDpi == mAppliedIconDpi
+                && mInvariantDeviceProfile.iconBitmapSize == mAppliedIconSize) {
+            mModel.forceReload();
+        } else {
+            refreshAndReloadLauncher();
+        }
+    }
+
     public void clearAllViewsFromHomeScreen() {
         final boolean isViewsRemoved =
             mLauncher.getModelWriter().clearAllHomeScreenViewsByType(
@@ -236,8 +256,9 @@ public class LauncherAppState implements SafeCloseable {
 
     private void refreshAndReloadLauncher() {
         LauncherIcons.clearPool(mContext);
-        mIconCache.updateIconParams(
-                mInvariantDeviceProfile.fillResIconDpi, mInvariantDeviceProfile.iconBitmapSize);
+        mAppliedIconDpi = mInvariantDeviceProfile.fillResIconDpi;
+        mAppliedIconSize = mInvariantDeviceProfile.iconBitmapSize;
+        mIconCache.updateIconParams(mAppliedIconDpi, mAppliedIconSize);
         mModel.forceReload();
     }
 
