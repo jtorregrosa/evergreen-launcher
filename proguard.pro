@@ -35,7 +35,9 @@
 
 
 # Common rules.
--keep class com.android.** { *; }
+# Evergreen (EVG-5b): no blanket keep for com.android.**. It overrode the AOSP rules in
+# proguard.flags (launcher3 is allowshrinking; systemui.shared and quickstep stay kept), so
+# none of the launcher code was shrunk.
 -keep class android.window.** { *; }
 -keepclasseswithmembernames class * {
     native <methods>;
