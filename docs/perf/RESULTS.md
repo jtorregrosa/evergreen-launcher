@@ -328,7 +328,10 @@ Themed icons on, interleaved `ab.sh` against a control built from the same tree,
 | drawer_fling | 27.9% | 22.9% |
 | folder | 20.1% | 25.6% |
 
-Within the run-to-run spread; no regression. Note the level: with themed icons on, drawer fling
+Drawer toggle and fling are within the spread. Folder is higher in all 3 rounds (16.8-22.7% against
+23.9-28.7%): the folder animation fades its icons, and themed icons now really draw with that
+alpha (blended) instead of opaque, so some extra cost is expected from the fix itself. Accepted as
+a correctness fix. Note the level: with themed icons on, drawer fling
 is about 25% janky against about 6% with them off in earlier runs (SUI-7).
 
 ## Experiments that were not merged
