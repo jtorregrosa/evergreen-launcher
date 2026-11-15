@@ -34,7 +34,7 @@ import android.graphics.Rect;
 import android.graphics.drawable.GradientDrawable;
 import android.util.Property;
 import android.view.View;
-import android.view.animation.AnimationUtils;
+import android.view.animation.PathInterpolator;
 
 import com.android.launcher3.BubbleTextView;
 import com.android.launcher3.CellLayout;
@@ -57,6 +57,7 @@ import java.util.List;
 import app.lawnchair.theme.color.ColorOption;
 import app.lawnchair.theme.color.tokens.ColorTokens;
 import app.lawnchair.util.LawnchairUtilsKt;
+import com.android.app.animation.Interpolators;
 
 /**
  * Manages the opening and closing animations for a {@link Folder}.
@@ -66,6 +67,10 @@ import app.lawnchair.util.LawnchairUtilsKt;
  * in its place before starting the animation.
  */
 public class FolderAnimationManager {
+
+    // Same curve as R.interpolator.large_folder_preview_item_open_interpolator.
+    private static final TimeInterpolator LARGE_FOLDER_PREVIEW_ITEM_OPEN =
+            new PathInterpolator(0f, 1f, 0.5f, 1f);
 
     private static final float EXTRA_FOLDER_REVEAL_RADIUS_PERCENTAGE = 0.125F;
     private static final int FOLDER_NAME_ALPHA_DURATION = 32;
@@ -114,12 +119,11 @@ public class FolderAnimationManager {
         mDuration = res.getInteger(R.integer.config_materialFolderExpandDuration);
         mDelay = res.getInteger(R.integer.config_folderDelay);
 
-        mFolderInterpolator = AnimationUtils.loadInterpolator(mContext,
-                R.interpolator.standard_interpolator);
-        mLargeFolderPreviewItemOpenInterpolator = AnimationUtils.loadInterpolator(mContext,
-                R.interpolator.large_folder_preview_item_open_interpolator);
-        mLargeFolderPreviewItemCloseInterpolator = AnimationUtils.loadInterpolator(mContext,
-                R.interpolator.standard_accelerate_interpolator);
+        // Evergreen: shared instances instead of inflating the XML interpolators (same curves)
+        // on every folder open and close.
+        mFolderInterpolator = Interpolators.STANDARD;
+        mLargeFolderPreviewItemOpenInterpolator = LARGE_FOLDER_PREVIEW_ITEM_OPEN;
+        mLargeFolderPreviewItemCloseInterpolator = Interpolators.STANDARD_ACCELERATE;
     }
 
     /**

@@ -221,6 +221,30 @@ The last row was a regression from EVG-1. Upstream re-rendered every icon on eac
 icon-rendering preferences only recreated the activity. Once the cache survived, they no longer
 reached cached icons. Checked on the device: the renamed label shows and reverts.
 
+## Unused icon bitmaps and folder interpolators (SUI-6, SUI-19, #34)
+
+- **SUI-6 (submodule `5e74b2e`):**
+  - `CustomAdaptiveIconDrawable` now allocates its layers bitmap only when it is drawn.
+  - The main user no longer gets a blank badge bitmap drawn on every themed icon.
+
+  Themed and system icons look identical to before in the drawer (screenshots compared). The
+  memory saving (about 1 MB expected) is below the noise of `dumpsys meminfo` across interleaved
+  runs: Native Heap 22.4 / 23.6 / 18.5 MB against 22.8 / 22.5 MB.
+- **SUI-19:** folder open/close and the widget sheet reuse the `Interpolators` singletons instead of
+  inflating XML interpolators on each use.
+
+Interleaved `ab.sh`, 3 rounds:
+
+| Scenario | Baseline janky | Fixes janky |
+|---|---|---|
+| folder | 4.2% | 4.5% |
+| folder_first | 4.5% | 4.0% |
+| widgets (fixes measured second) | 8.0% | 11.9% |
+| widgets, order swapped (fixes measured first, against the fixes minus the widget change) | 6.6% | 6.7% |
+
+The first widgets result came from the run order, not the change: with the order swapped the two
+builds are the same. No regression.
+
 ## Experiments that were not merged
 
 | Change | Result | Decision |
