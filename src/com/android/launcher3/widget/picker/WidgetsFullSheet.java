@@ -41,7 +41,6 @@ import android.view.Window;
 import android.view.ViewParent;
 import android.view.WindowInsets;
 import android.view.WindowInsetsController;
-import android.view.animation.AnimationUtils;
 import android.view.animation.Interpolator;
 import android.widget.Button;
 import android.widget.LinearLayout;
@@ -87,6 +86,7 @@ import java.util.stream.IntStream;
 import app.lawnchair.font.FontManager;
 import app.lawnchair.theme.color.tokens.ColorTokens;
 import app.lawnchair.theme.drawable.DrawableTokens;
+import com.android.app.animation.Interpolators;
 
 /**
  * Popup for showing the full list of available widgets
@@ -644,8 +644,7 @@ public class WidgetsFullSheet extends BaseWidgetSheet
             }
             setUpOpenAnimation(mActivityContext.getDeviceProfile().bottomSheetOpenDuration);
             Animator animator = mOpenCloseAnimation.getAnimationPlayer();
-            animator.setInterpolator(AnimationUtils.loadInterpolator(
-                    getContext(), android.R.interpolator.linear_out_slow_in));
+            animator.setInterpolator(Interpolators.LEGACY_DECELERATE); // linear_out_slow_in
             post(() -> {
                 animator.setDuration(mActivityContext.getDeviceProfile().bottomSheetOpenDuration)
                         .start();
