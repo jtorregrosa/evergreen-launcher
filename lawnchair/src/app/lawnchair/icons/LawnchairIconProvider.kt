@@ -22,7 +22,6 @@ import android.os.Handler
 import android.os.SystemClock
 import android.os.UserHandle
 import android.os.UserManager
-import android.util.ArrayMap
 import android.util.Log
 import androidx.core.content.getSystemService
 import app.lawnchair.data.iconoverride.IconOverrideRepository
@@ -85,8 +84,17 @@ class LawnchairIconProvider @JvmOverloads constructor(
     private var themeMapName: String = ""
     private var _themeMap: Map<ComponentName, ThemedIconDrawable.ThemeData>? = null
 
+    /**
+     * Evergreen: the packages the themed icon map was filtered to. Upstream kept every entry of
+     * the pack's map (Lawnicons: about 13,000) for the whole process, while only the installed
+     * apps are ever looked up. A package installed later is added on its first miss, see
+     * [getThemeData].
+     */
+    private var themeMapPackages: Set<String>? = null
+    private val extraThemeMapPackages = HashSet<String>()
+
     val themeMap: Map<ComponentName, ThemedIconDrawable.ThemeData>
-        get() {
+        @Synchronized get() {
             if (!isThemeEnabled) return DISABLED_MAP
             val pack = currentThemePack()
             val map = _themeMap
@@ -224,12 +232,28 @@ class LawnchairIconProvider @JvmOverloads constructor(
     }
 
     override fun getThemeData(componentName: ComponentName): ThemedIconDrawable.ThemeData? {
-        val td = getDynamicIconsFromMap(context, themeMap, componentName)
+        val map = themeMap
+        val td = getDynamicIconsFromMap(context, map, componentName)
         if (td != null) {
             return td
         }
-        return themeMap[componentName] ?: themeMap[ComponentName(componentName.packageName, "")]
+        lookUpThemeData(map, componentName)?.let { return it }
+        if (map === DISABLED_MAP) return null
+        // A package that was not installed when the map was built: rebuild it including that
+        // package, once.
+        synchronized(this) {
+            val pkg = componentName.packageName
+            val packages = themeMapPackages ?: return null
+            if (pkg in packages || !extraThemeMapPackages.add(pkg)) return null
+            _themeMap = null
+        }
+        return lookUpThemeData(themeMap, componentName)
     }
+
+    private fun lookUpThemeData(
+        map: Map<ComponentName, ThemedIconDrawable.ThemeData>,
+        componentName: ComponentName,
+    ) = map[componentName] ?: map[ComponentName(componentName.packageName, "")]
 
     override fun getIcon(info: ActivityInfo?): Drawable {
         return CustomAdaptiveIconDrawable.wrapNonNull(super.getIcon(info))
@@ -394,7 +418,9 @@ class LawnchairIconProvider @JvmOverloads constructor(
     }
 
     private fun createThemedIconMap(): MutableMap<ComponentName, ThemedIconDrawable.ThemeData> {
-        val map = ArrayMap<ComponentName, ThemedIconDrawable.ThemeData>()
+        val map = HashMap<ComponentName, ThemedIconDrawable.ThemeData>()
+        val packages = installedPackageNames()?.apply { addAll(extraThemeMapPackages) }
+        themeMapPackages = packages
 
         fun updateMapFromResources(resources: Resources, packageName: String) {
             try {
@@ -413,7 +439,7 @@ class LawnchairIconProvider @JvmOverloads constructor(
                             val pkg = parser.getAttributeValue(null, ATTR_PACKAGE)
                             val cmp = parser.getAttributeValue(null, ATTR_COMPONENT).orEmpty()
                             val iconId = parser.getAttributeResourceValue(null, ATTR_DRAWABLE, 0)
-                            if (iconId != 0 && pkg.isNotEmpty()) {
+                            if (iconId != 0 && pkg.isNotEmpty() && (packages == null || pkg in packages)) {
                                 map[ComponentName(pkg, cmp)] = ThemedIconDrawable.ThemeData(resources, packageName, iconId)
                             }
                         }
@@ -438,6 +464,14 @@ class LawnchairIconProvider @JvmOverloads constructor(
         }
 
         return map
+    }
+
+    /** Null when the list is unavailable; the map is then not filtered. */
+    private fun installedPackageNames(): HashSet<String>? = try {
+        context.packageManager.getInstalledApplications(0).mapTo(HashSet()) { it.packageName }
+    } catch (e: Exception) {
+        Log.e(TAG, "Unable to list installed packages.", e)
+        null
     }
 
     companion object {
