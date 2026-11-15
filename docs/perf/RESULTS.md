@@ -457,6 +457,29 @@ Interleaved cold starts (`speed`), 3 rounds × 4 against a same-tree control:
 About 40-50 ms faster, lower in every round. Turning the dock off and on in Settings relaid out the
 home screen both ways, with no stale values and no crashes.
 
+## Drawer icons without a per-view StateListAnimator
+
+A `simpleperf` profile of drawer icon creation showed about half of `View.<init>` in
+`AnimatorInflater.loadStateListAnimator` and `StateListAnimator.clone`. `BaseIcon.AllApps` set
+`android:stateListAnimator` (a 1.15x scale for the fast-scroll target), so every drawer, prediction
+and search result icon cloned two `AnimatorSet`s when it was created, although only the one
+fast-scroll target is ever activated. The style no longer sets it; `AllAppsFastScrollHelper` scales
+that view with `ViewPropertyAnimator`, with the same values and durations.
+
+Interleaved, 3 rounds against a same-tree control (`speed`; the Lenovo launcher was HOME during the
+runs so the system did not relaunch a force-stopped Evergreen):
+
+| Build | Cold start (without each round's first start) | Drawer fling janky | First drawer open janky |
+|---|---|---|---|
+| Control | 1236 ms | 4.4-5.4% | 14.6-50.3% |
+| Change | 1229 ms | 4.7-5.2% | 28.7-53.5% |
+
+No measurable change. Drawer icons are mostly preinflated on `VIEW_PREINFLATION_EXECUTOR`, so the
+saving is background CPU. The first-open numbers follow the bimodal GPU state, not the build (GPU
+dominates 52-96 of the slow frames in both). Merged as a maintenance change: it removes per-view work
+for an effect only one view uses at a time. The fast-scroll highlight was not exercised on the
+device, where all 35 apps fit on one drawer screen.
+
 ## Experiments that were not merged
 
 | Change | Result | Decision |
