@@ -87,7 +87,6 @@ import com.android.launcher3.util.SafeCloseable;
 import com.android.launcher3.util.ShortcutUtil;
 import com.android.launcher3.views.ActivityContext;
 import com.android.launcher3.views.FloatingIconViewCompanion;
-import com.patrykmichalik.opto.core.PreferenceExtensionsKt;
 
 import java.text.NumberFormat;
 import java.util.HashMap;
@@ -864,7 +863,7 @@ public class BubbleTextView extends TextView implements ItemInfoUpdateReceiver,
 
         return info == null || info.container != LauncherSettings.Favorites.CONTAINER_HOTSEAT
                 && info.container != LauncherSettings.Favorites.CONTAINER_HOTSEAT_PREDICTION
-                || PreferenceExtensionsKt.firstBlocking(pref2.getEnableLabelInDock());
+                || pref2.cachedValue(pref2.getEnableLabelInDock());
     }
 
     public void setTextVisibility(boolean visible) {

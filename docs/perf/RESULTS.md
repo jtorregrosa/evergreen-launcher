@@ -365,6 +365,27 @@ line with earlier runs. Known cost: the first drawer open after a start rasteriz
 icons in one frame (max frame about 90 ms in each SUI-7 round, once). Follow-up SUI-7b: build the
 rasters off the UI thread.
 
+## Cached preference reads on interaction paths (EVG-M3, EVG-6b)
+
+**EVG-M3** microbenchmark in `LawnchairLauncher.onCreate` (temporary build), 500 reads of a
+warm boolean preference, 3 cold starts:
+
+| Call | Cost per read |
+|---|---|
+| `firstBlocking()` (`runBlocking { get().first() }`) | 0.30-0.41 ms |
+| `PreferenceManager2.cachedValue()` (EVG-6a) | 0.0002 ms |
+
+**EVG-6b** switches the read-only `firstBlocking()` calls on interaction paths to
+`cachedValue()`: `CellLayout.isOccupied` / `isRegionVacant` (called in loops while dragging),
+`CellLayout.addViewToCellLayout`, `ReorderAlgorithm.rearrangementExists` (every reorder step),
+`Workspace.onInterceptTouchEvent` (every touch down) and its drop handler,
+`BubbleTextView.shouldTextBeVisible` (every bind) and the `PagedView` page-swipe end.
+`DeviceProfile`, `DeviceProfileOverrides` and the grid preferences keep `firstBlocking()`: they are
+written and read back right away, where a cached value could still be the old one.
+
+Light check (maintenance change): smoke test (home, drawer, search, long press, folder, app
+launch, settings) with no crashes, and an icon dragged to another cell and back.
+
 ## Experiments that were not merged
 
 | Change | Result | Decision |
