@@ -6,7 +6,7 @@ OUT=$1; mkdir -p "$OUT"
 ADB="${ADB_BIN:-adb} -s ${ADB_SERIAL:?set ADB_SERIAL to the test device serial}"
 PKG=io.github.jtorregrosa.evergreen
 ACT=$PKG/app.lawnchair.LawnchairLauncher
-focus() { $ADB shell dumpsys window | tr -d '\r' | grep -m1 mCurrentFocus | sed 's/.*u0 //;s/}//'; }
+focus() { $ADB shell dumpsys window displays | tr -d '\r' | grep -m1 mCurrentFocus | sed 's/.*u0 //;s/}//'; }
 shot() { $ADB exec-out screencap -p > "$OUT/$1.png"; echo "$1: focus=$(focus)"; }
 home() { $ADB shell am start -n $ACT >/dev/null 2>&1; sleep 1.5; $ADB shell input keyevent KEYCODE_BACK; sleep 1; }
 

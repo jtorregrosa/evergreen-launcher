@@ -66,7 +66,7 @@ FLING_UP="$CX $((H * 78 / 100)) $CX $((H * 26 / 100)) 80"
 FLING_DOWN="$CX $((H * 26 / 100)) $CX $((H * 78 / 100)) 80"
 
 bad=0
-focus_ok() { $ADB shell dumpsys window | tr -d '\r' | grep -m1 mCurrentFocus | grep -q "$PKG"; }
+focus_ok() { $ADB shell dumpsys window displays | tr -d '\r' | grep -m1 mCurrentFocus | grep -q "$PKG"; }
 check_focus() { focus_ok || { bad=$((bad + 1)); go_home; }; }
 key() { $ADB shell input keyevent "$1"; }
 tap() { $ADB shell input tap $1; }
