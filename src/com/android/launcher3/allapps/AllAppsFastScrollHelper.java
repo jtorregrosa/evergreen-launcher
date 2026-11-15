@@ -15,6 +15,8 @@
  */
 package com.android.launcher3.allapps;
 
+import android.view.View;
+
 import androidx.recyclerview.widget.LinearSmoothScroller;
 import androidx.recyclerview.widget.RecyclerView.ViewHolder;
 
@@ -23,6 +25,9 @@ import com.android.launcher3.allapps.AlphabeticalAppsList.FastScrollSectionInfo;
 public class AllAppsFastScrollHelper {
 
     private static final int NO_POSITION = -1;
+    private static final float SELECTED_SCALE = 1.15f;
+    private static final long SELECT_DURATION = 225;
+    private static final long DESELECT_DURATION = 275;
 
     private int mTargetFastScrollPosition = NO_POSITION;
 
@@ -53,7 +58,13 @@ public class AllAppsFastScrollHelper {
 
     private void setLastHolderSelected(boolean isSelected) {
         if (mLastSelectedViewHolder != null) {
-            mLastSelectedViewHolder.itemView.setActivated(isSelected);
+            View view = mLastSelectedViewHolder.itemView;
+            view.setActivated(isSelected);
+            // Scale the fast-scroll target here rather than with a StateListAnimator in the icon
+            // style: View.<init> cloned that animator for every drawer icon it created.
+            float scale = isSelected ? SELECTED_SCALE : 1f;
+            view.animate().scaleX(scale).scaleY(scale)
+                    .setDuration(isSelected ? SELECT_DURATION : DESELECT_DURATION).start();
             mLastSelectedViewHolder.setIsRecyclable(!isSelected);
         }
     }
