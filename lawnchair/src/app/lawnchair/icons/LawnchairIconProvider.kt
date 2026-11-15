@@ -19,6 +19,7 @@ import android.graphics.drawable.AdaptiveIconDrawable
 import android.graphics.drawable.ColorDrawable
 import android.graphics.drawable.Drawable
 import android.os.Handler
+import android.os.SystemClock
 import android.os.UserHandle
 import android.os.UserManager
 import android.util.ArrayMap
@@ -93,7 +94,11 @@ class LawnchairIconProvider @JvmOverloads constructor(
                 return map
             }
             themeMapName = pack.packageName
-            return createThemedIconMap().also { _themeMap = it }
+            val start = SystemClock.uptimeMillis()
+            return createThemedIconMap().also {
+                _themeMap = it
+                Log.i(TAG, "Themed icon map: ${it.size} entries in ${SystemClock.uptimeMillis() - start} ms")
+            }
         }
     private val supportsIconTheme get() = themeMap != DISABLED_MAP
 
