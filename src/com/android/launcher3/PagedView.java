@@ -63,7 +63,6 @@ import com.android.launcher3.util.IntSet;
 import com.android.launcher3.util.Thunk;
 import com.android.launcher3.views.ActivityContext;
 
-import com.patrykmichalik.opto.core.PreferenceExtensionsKt;
 import java.util.ArrayList;
 import java.util.function.Consumer;
 
@@ -1428,7 +1427,8 @@ public abstract class PagedView<T extends View & PageIndicator> extends ViewGrou
                     // move to the left and fling to the right will register as a fling to the right.
 
                     boolean infiniteScroll = prefs.getInfiniteScrolling().get();
-                    boolean enableFeed = PreferenceExtensionsKt.firstBlocking(prefs2.getEnableFeed());
+                    // Evergreen (EVG-6b): every page swipe; non-blocking cached read.
+                    boolean enableFeed = prefs2.cachedValue(prefs2.getEnableFeed());
 
                     if (((isSignificantMove && !isDeltaLeft && !isFling) ||
                             (isFling && !isVelocityLeft)) && mCurrentPage > 0) {

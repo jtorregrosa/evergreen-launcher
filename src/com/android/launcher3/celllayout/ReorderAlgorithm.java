@@ -22,7 +22,6 @@ import com.android.launcher3.CellLayout;
 import com.android.launcher3.Utilities;
 import com.android.launcher3.util.CellAndSpan;
 import com.android.launcher3.util.GridOccupancy;
-import com.patrykmichalik.opto.core.PreferenceExtensionsKt;
 
 import java.util.ArrayList;
 import java.util.Comparator;
@@ -132,7 +131,8 @@ public class ReorderAlgorithm {
         ArrayList<View> intersectingViews = new ArrayList<>();
         Rect occupiedRect = new Rect(cellX, cellY, cellX + spanX, cellY + spanY);
 
-        if (PreferenceExtensionsKt.firstBlocking(mCellLayout.pref.getAllowWidgetOverlap())) {
+        // Evergreen (EVG-6b): runs on every reorder step while dragging.
+        if (mCellLayout.pref.cachedValue(mCellLayout.pref.getAllowWidgetOverlap())) {
             solution.intersectingViews = new ArrayList<>(intersectingViews);
             return true;
         }

@@ -1208,7 +1208,8 @@ public class Workspace<T extends View & PageIndicator> extends PagedView<T>
     public boolean onInterceptTouchEvent(MotionEvent ev) {
         if (ev.getAction() == MotionEvent.ACTION_DOWN) {
             View touchedView = findViewAtPosition(ev.getX(), ev.getY());
-            Boolean iconSwipeGestures = PreferenceExtensionsKt.firstBlocking(mPreferenceManager2.getIconSwipeGestures());
+            // Evergreen (EVG-6b): every touch down on the workspace.
+            Boolean iconSwipeGestures = mPreferenceManager2.cachedValue(mPreferenceManager2.getIconSwipeGestures());
             
             if (iconSwipeGestures && touchedView instanceof ShortcutAndWidgetContainer container) {
                 container.onTouchEvent(ev);
@@ -2220,7 +2221,7 @@ public class Workspace<T extends View & PageIndicator> extends PagedView<T>
         boolean snappedToNewPage = false;
         boolean resizeOnDrop = false;
         Runnable onCompleteRunnable = null;
-        boolean forceWidgetResize = PreferenceExtensionsKt.firstBlocking(mPreferenceManager2.getForceWidgetResize());
+        boolean forceWidgetResize = mPreferenceManager2.cachedValue(mPreferenceManager2.getForceWidgetResize());
         if (d.dragSource != this || mDragInfo == null) {
             final int[] touchXY = new int[] { (int) mDragViewVisualCenter[0],
                     (int) mDragViewVisualCenter[1] };
