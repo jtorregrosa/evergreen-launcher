@@ -480,6 +480,29 @@ dominates 52-96 of the slow frames in both). Merged as a maintenance change: it 
 for an effect only one view uses at a time. The fast-scroll highlight was not exercised on the
 device, where all 35 apps fit on one drawer screen.
 
+## Themed icon rasters built before the first drawer open (SUI-7b)
+
+SUI-7 built each themed raster on first draw, so the first drawer open after a start built the
+drawer's rasters on the UI thread in one frame. `bindAllApplications` now hands the apps to
+`ThemedRasterPrewarm`, which builds them on `UI_HELPER_EXECUTOR` at `allAppsIconSizePx` with the
+colours of the drawer's context, only when themed icons are enabled in the drawer.
+`ThemedBitmapInfo.getRaster` is synchronized for this.
+
+A temporary log build (cold start, then drawer open) showed 11 rasters built on the main thread
+during startup (home screen and dock, the same 90 px size) and the other 22 on `UiThreadHelper`
+about 300 ms later. Opening the drawer built none on the main thread.
+
+Interleaved, 3 rounds against a same-tree control, themed icons on (system icons with Lawnicons as
+the themed source; the user's setup was restored afterwards):
+
+| Build | First drawer open max frame | p99 | Avg draw in slow frames | Cold start | Drawer fling janky |
+|---|---|---|---|---|---|
+| Control | 102-109 ms | 102-106 ms | 2.6-3.8 ms | ~1264 ms | 3.6-5.2% |
+| SUI-7b | 58-64 ms | 56-60 ms | 0.5-0.6 ms | ~1258 ms | 4.4-6.3% |
+
+The one-time hitch is gone in every round; the remaining 58 ms frames are the GPU state, also seen
+with themed icons off. Cold start and fling are within noise. It has no effect without themed icons.
+
 ## Experiments that were not merged
 
 | Change | Result | Decision |
