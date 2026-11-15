@@ -92,7 +92,7 @@ Columns: priority (P0-P3), impact (I) and risk (R) as High/Medium/Low, effort (E
 | ID | P | Title | Evidence | Proposal | I/R/E | Status |
 |---|---|---|---|---|---|---|
 | EVG-1 | **P0** | Full reload and wipe of the icon cache on every `onCreate`, plus 2 DB read bugs | `lawnchair/res/values/config.xml:110` (`always_reload_icons=true`). `LawnchairLauncher.kt:252,498-503` (does not check that there is an icon pack, although the KDoc says so). `LauncherAppState.java:237-242`. `BaseIconCache.java:187-199` (`mIconDb.clear(); mCache.clear()`). `LauncherModel.java:311-323` (restarts the loader). Bug C-1: `BaseIconCache.java:682`, `c.getBlob(2)` on `icon_color`, which is INTEGER; it throws SQLiteException and the `catch` does `return false`, so it silently re-renders. Bug C-2: `BaseIconCache.java:666`, `c.getInt(0)` (componentName) on API < 33, so the color comes out as 0xFF000000 | 1) Default value `false`, or reload only if there is an icon pack and its `versionCode`/`lastUpdateTime` changed (stored in a pref). 2) Use `data` or `getBlob(INDEX_ICON)`. 3) Use `getInt(INDEX_COLOR)` on all versions. **All three in the same PR** | H/L/S | CONFIRMED (code, verifier and logcat) |
-| EVG-1b | P1 | The cache state key is built from lazy fields | `LawnchairIconProvider.kt:205-207,229-235,407`. `LauncherAppState.java:168,303-307` | Compute `iconPackVersion` and `isThemeEnabled` from the prefs before the first `getSystemIconState` | H/L/S | HYPOTHESIS: only with themed icons. Measure with a log of `iconState` versus `ICON_STATE` over 3 startups |
+| EVG-1b | P1 | The cache state key is built from lazy fields | `LawnchairIconProvider.kt:205-207,229-235,407`. `LauncherAppState.java:168,303-307` | Compute `iconPackVersion` and `isThemeEnabled` from the prefs before the first `getSystemIconState` | H/L/S | **CONFIRMED on the device** (47 icons re-rendered per cold start with themed icons), fixed in #27 |
 | EVG-1c | P1 | `ACTION_TIME_TICK` refreshes the model every minute for each clock in the pack | `LawnchairIconProvider.kt:308-327`. Only with an icon pack (the default pref is `""`). Lawnicons used only as a themed icon does not trigger it | Remove TICK and keep TIMEZONE, TIME_CHANGED and DATE_CHANGED; `ClockDrawableWrapper` already animates itself | H if pack / L / S | CONFIRMED (conditional) |
 | EVG-1d | P2 | Double shadow with software `BlurMaskFilter` and an ARGB copy on every adaptive icon | `BaseIconFactory.java:252-256` + `addPathShadow` (513-515) | Remove `recreateIcon` for adaptive icons, or do it only in modest mode | M-H/M (appearance)/S | CONFIRMED |
 | EVG-1e | P2 | The appfilter is parsed in every process, the loader blocks and the maps are not thread-safe | `IconPack.kt:27-44`, `LawnchairIconProvider.kt:56-59`, `CustomIconPack.kt:24-30,173`, `IconPackProvider.kt:20,31` | `ConcurrentHashMap` and `@Volatile`; serialize the map to disk keyed by versionCode+lastUpdateTime; load `themedIconPack` only if themed icons are enabled | M/L/M | CONFIRMED; the timing, HYPOTHESIS |
@@ -259,6 +259,7 @@ EVG-1 and EVG-2 barely move startup: the real wipe was caused by EVG-3b, which w
 | EVG-B5 | `MediaController` callbacks leaked on every stop | `onPause()` re-registered them | Unregister instead (#16) |
 | EVG-B6 | Dock search bar leaked the Activity on `recreate()` | Unscoped preference listeners | View-scoped listeners (#16) |
 | EVG-B7 | `subscribeBlocking` ran its callback twice | `onEach` before `drop(1)` | Compare with the last value (#16) |
+| EVG-B8 | Themed icons read from the icon cache were drawn without their theme | `ThemedBitmapInfo` did not override `clone()`, so `withFlags()` on DB reads returned a plain `BitmapInfo`; hidden upstream by EVG-1b re-rendering everything | Override `clone()` (submodule `3ed257c`, #27) |
 
 ## Implementation status
 
@@ -285,6 +286,7 @@ Merged into `perf/android10` (see `docs/perf/RESULTS.md` for the measurements):
 | #22 | EVG-15f |
 
 | #25 | EVG-15c, EVG-3c, EVG-18, EVG-15g, EVG-5d, EVG-10c, EVG-10d |
+| #27 | EVG-1b (themed icons re-rendered on every cold start), EVG-1e, EVG-1f, EVG-B8 |
 
 Closed without a code change (see RESULTS.md):
 - Drawer sheet "drawn twice": not a second layer. On this device's renderer a single draw already
@@ -300,10 +302,14 @@ Closed without a code change (see RESULTS.md):
 - Plan V5 and V7 need no change: folder and popup colours already come from the wallpaper
   palette, and sheets, popups and folders share a 24 dp radius. V6 (drawer duration) left as is.
 
+- EVG-1e: the on-disk appfilter cache is not needed. With the pack no longer created at startup,
+  the appfilter (~300 ms with Lawnicons) is only parsed when an icon has to be drawn.
+- EVG-1g, EVG-1h: both only run when an icon is rendered. After EVG-1, EVG-3b and EVG-1b that is
+  only on install, update or a pack change, at ~18 ms per icon; Lawnicons is vector, so 1g cannot be
+  measured with it.
+
 Still open, only relevant with other settings:
-- Plan R4b: folder reveal path; only matters for squircle icon shapes.
-- EVG-1b: confirm with a log first; only with themed icons.
-- EVG-1e, EVG-1f: only relevant with an icon pack or system icon overrides.
+- Plan R4b: folder reveal path; only matters for icon shapes other than the circle.
 - EVG-1d / EVG-21 (modest-device mode with lighter shadows): implemented and measured, no gain, so not merged. See RESULTS.md.
 - EVG-6b: systemic preference cache. `cachedValue()` exists; the remaining `firstBlocking()` calls are on cold paths.
 - EVG-8b/8c/8d: only with drawer folders or categories.

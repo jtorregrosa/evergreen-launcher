@@ -17,13 +17,7 @@ import kotlinx.coroutines.flow.flowOn
 class SystemIconPack(context: Context, pkg: String) : IconPack(context, pkg) {
 
     override val label = context.getString(R.string.system_icons)
-    private val appMap = run {
-        val profiles = UserCache.INSTANCE.get(context).userProfiles
-        val launcherApps: LauncherApps = context.requireSystemService()
-        profiles
-            .flatMap { launcherApps.getActivityList(null, Process.myUserHandle()) }
-            .associateBy { ComponentKey(it.componentName, it.user) }
-    }
+    private val launcherApps: LauncherApps = context.requireSystemService()
 
     init {
         startLoad()
@@ -36,9 +30,12 @@ class SystemIconPack(context: Context, pkg: String) : IconPack(context, pkg) {
     override fun getCalendars(): MutableSet<ComponentName> = mutableSetOf()
     override fun getClocks(): MutableSet<ComponentName> = mutableSetOf()
 
+    // Evergreen: resolve only the overridden activity instead of keeping a map of every activity
+    // (built twice per profile), so a single instance can be reused and never goes stale.
     override fun getIcon(iconEntry: IconEntry, iconDpi: Int): Drawable? {
-        val key = ComponentKey.fromString(iconEntry.name)
-        val app = appMap[key] ?: return null
+        val key = ComponentKey.fromString(iconEntry.name) ?: return null
+        val app = launcherApps.getActivityList(key.componentName.packageName, key.user)
+            .firstOrNull { it.componentName == key.componentName } ?: return null
         return app.getIcon(iconDpi)
     }
 
@@ -46,11 +43,12 @@ class SystemIconPack(context: Context, pkg: String) : IconPack(context, pkg) {
     }
 
     override fun getAllIcons(): Flow<List<IconPickerCategory>> = flow {
-        val items = appMap
-            .map { (key, info) ->
+        val items = UserCache.INSTANCE.get(context).userProfiles
+            .flatMap { launcherApps.getActivityList(null, it) }
+            .map { info ->
                 IconPickerItem(
                     packPackageName = packPackageName,
-                    drawableName = key.toString(),
+                    drawableName = ComponentKey(info.componentName, info.user).toString(),
                     label = info.label.toString(),
                     IconType.Normal,
                 )

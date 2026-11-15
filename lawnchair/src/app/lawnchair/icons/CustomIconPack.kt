@@ -11,6 +11,7 @@ import android.graphics.drawable.Drawable
 import android.util.Xml
 import com.android.launcher3.R
 import java.io.IOException
+import java.util.concurrent.ConcurrentHashMap
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
@@ -22,12 +23,14 @@ import org.xmlpull.v1.XmlPullParserFactory
 class CustomIconPack(context: Context, packPackageName: String) : IconPack(context, packPackageName) {
 
     private val packResources = context.packageManager.getResourcesForApplication(packPackageName)
-    private val componentMap = mutableMapOf<ComponentName, IconEntry>()
-    private val calendarMap = mutableMapOf<ComponentName, IconEntry>()
-    private val clockMap = mutableMapOf<ComponentName, IconEntry>()
-    private val clockMetas = mutableMapOf<IconEntry, ClockMetadata>()
+    // Evergreen: concurrent maps. They are filled on an IO thread while receivers and the icon
+    // picker may already read them, and idCache is written from several threads.
+    private val componentMap = ConcurrentHashMap<ComponentName, IconEntry>()
+    private val calendarMap = ConcurrentHashMap<ComponentName, IconEntry>()
+    private val clockMap = ConcurrentHashMap<ComponentName, IconEntry>()
+    private val clockMetas = ConcurrentHashMap<IconEntry, ClockMetadata>()
 
-    private val idCache = mutableMapOf<String, Int>()
+    private val idCache = ConcurrentHashMap<String, Int>()
 
     override val label = context.packageManager.let { pm ->
         pm.getApplicationInfo(packPackageName, 0).loadLabel(pm).toString()
