@@ -62,7 +62,7 @@ The wordmark is set in [Outfit](https://fonts.google.com/specimen/Outfit) SemiBo
 
 | Resource | What it is |
 | --- | --- |
-| `lawnchair/res/drawable/ic_evergreen_foreground.xml` | Adaptive icon foreground: the full-colour logo, centred in the 108 dp canvas and kept inside the safe zone |
+| `lawnchair/res/drawable/ic_evergreen_foreground.xml` | Adaptive icon foreground: points to the anti-aliased PNG layers in `res/mipmap-*` (`ic_launcher_home_foreground.png`). The logo is centred in the 108 dp canvas at about 60% of the 72 dp visible area, so round masks leave a margin. A vector foreground would need `<clip-path>`, which Android does not anti-alias |
 | `lawnchair/res/drawable/ic_evergreen_background.xml` | Adaptive icon background: dark gradient |
 | `lawnchair/res/drawable/ic_launcher_home_monochrome.xml` | Themed icon layer (Android 13 and later): the mono logo |
 | `res/mipmap-*/ic_launcher_home*.png` | Legacy raster icons, kept in sync with the adaptive icon |
