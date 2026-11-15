@@ -131,7 +131,7 @@ Columns: priority (P0-P3), impact (I) and risk (R) as High/Medium/Low, effort (E
 | ID | P | Title | Evidence | Proposal | I/R/E | Status |
 |---|---|---|---|---|---|---|
 | EVG-6a | **P0** | `firstBlocking` on every frame or measure. `opto` = `runBlocking { get().first() }`, with no cache of its own | Pages: `Workspace.java:1468,1476-1481`; `PageIndicatorDots.java:170,445,454` via `FeatureFlags.java:72-85` (`enableDotPagination=true`). Drawer: `ActivityAllAppsContainerView.java:166,807,834,843`. Icons: `BubbleTextView.java:493` (the pref is evaluated before `mDisplay`), `:342`, `BaseAllAppsAdapter.java:247` | Fields read once: all these prefs trigger `recreate` in `onSet`. Reverse the order of the `&&` in `shouldUseTwoLine` | H/L/S | CONFIRMED; cost per call, HYPOTHESIS |
-| EVG-6b | P1 | Systemic preference cache | More than 60 `firstBlocking` at startup and in actions; precedent in `LawnchairAppSearchAlgorithm.kt:42-54` | `PreferenceManager2.state()` with `stateIn(Eagerly)` + non-blocking `value()`, prewarmed in the background; replace in `FeatureFlags` and on hot paths | H/L-M/M | CONFIRMED |
+| EVG-6b | P1 | Systemic preference cache | More than 60 `firstBlocking` at startup and in actions; precedent in `LawnchairAppSearchAlgorithm.kt:42-54` | `PreferenceManager2.state()` with `stateIn(Eagerly)` + non-blocking `value()`, prewarmed in the background; replace in `FeatureFlags` and on hot paths | H/L-M/M | CONFIRMED. **Partly fixed:** interaction paths switched to `cachedValue()`; DeviceProfile and grid prefs kept blocking on purpose. See RESULTS.md |
 | EVG-7 | P1 | Room with `runBlocking` on every long press | `WallpaperService.kt:98` (`getTopWallpapers`), `LawnchairLauncher.kt:349`, `WallpaperManagerCompat.kt:34` | `StateFlow` for "there are wallpapers", fed by a Room `Flow` | M/L/S | CONFIRMED |
 | EVG-8 | P2 | Opaque sheet over the workspace and hotseat on tablet, with no blur on API 29 | `AllAppsState.java:118-120,161-174,219-222`, `ActivityAllAppsContainerView.java:1490-1527` | On API < 31 on tablet: page alpha 0, no `HOTSEAT_ICONS` and scale 1 when the sheet is open; `drawRoundRect` or a cached path | M/M/S-M | CONFIRMED; gain, HYPOTHESIS (overdraw, gfxinfo) |
 | EVG-8b | P2 | Drawer folders: they are re-inflated on every bind and listeners accumulate; `isContentSame` is always **false** for folders, so DiffUtil always rebinds | `BaseAllAppsAdapter.java:171-172,358-360`, `FolderIcon.java:177-181,238`, `Folder.java:578,585` | Inflate once per ViewHolder, lazy `Folder`, `removeListener` on recycle, correct `isContentSame` | H if folders / M / M | CONFIRMED (only with user-created folders) |
@@ -196,7 +196,7 @@ Active when `ActivityManager.isLowRamDevice()` or `SDK_INT < 31` (configurable i
 |---|---|---|
 | EVG-M1 | Baseline for the section 5 table with the unchanged Evergreen release APK | Section 5 script |
 | EVG-M2 | Do you use an icon pack or themed icons? (affects EVG-1b, EVG-1c and EVG-1e) | Settings › Icons on the tablet |
-| EVG-M3 | Real cost of `firstBlocking` on the A53 | Microbenchmark of 10,000 calls on the device |
+| EVG-M3 | Real cost of `firstBlocking` on the A53 | Microbenchmark of 10,000 calls on the device **Done:** `firstBlocking` 0.30-0.41 ms, `cachedValue` 0.0002 ms per read |
 | EVG-M4 | Does GSA bind when returning to the home screen with the screen unlocked? | `dumpsys activity services com.google.android.googlequicksearchbox` in the foreground |
 | EVG-M5 | Does the Activity leak after a `recreate`? | Toggle dark mode 3 times and check `meminfo` (`Activities:`) |
 
