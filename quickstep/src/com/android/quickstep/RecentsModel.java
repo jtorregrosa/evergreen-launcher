@@ -129,8 +129,11 @@ public class RecentsModel implements RecentTasksDataSource, IconChangeListener,
         mTaskStackChangeListeners = taskStackChangeListeners;
         if (LawnchairApp.isRecentsEnabled()) {
             TaskStackChangeListeners.getInstance().registerTaskStackListener(this);
+            // Evergreen (SUI-21): the listener only clears the task icon cache, which is unused
+            // without recents. Registering it anyway added a second set of time, date and
+            // overlay receivers next to LauncherAppState's.
+            iconProvider.registerIconChangeListener(this, MAIN_EXECUTOR.getHandler());
         }
-        iconProvider.registerIconChangeListener(this, MAIN_EXECUTOR.getHandler());
     }
 
     public TaskIconCache getIconCache() {

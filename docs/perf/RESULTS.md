@@ -503,6 +503,28 @@ the themed source; the user's setup was restored afterwards):
 The one-time hitch is gone in every round; the remaining 58 ms frames are the GPU state, also seen
 with themed icons off. Cold start and fling are within noise. It has no effect without themed icons.
 
+## P3 maintenance batch (SUI-5c, SUI-20, SUI-21, SUI-B3)
+
+Small fixes with no expected change in frame times, checked lightly:
+
+- **SUI-5c:** `LauncherAppState` opens, compares and reopens the icon cache with the same size as
+  `IconCache` (`max(iconBitmapSize, allAppsIconBitmapSize)`). Before, a grid where the two sizes
+  differ would drop the icon DB on every process start after a reload, because the DB version is
+  that size.
+- **SUI-20:** the 5 duplicate `Interpolators` curves share the existing instances.
+- **SUI-21:** `RecentsModel` registers its icon listener only with recents enabled, and pack clock
+  and calendar broadcasts send one update per installed package and user.
+- **SUI-B3:** the field in `LauncherIcons` that hid `BaseIconFactory.mMonoIconEnabled` is gone;
+  the base field stays false, which is what every release already did.
+
+Checked on the tablet (recents off): Evergreen starts, the drawer draws normally and logcat shows no
+crash. `dumpsys activity broadcasts` shows one receiver fewer for each of `TIMEZONE_CHANGED` and
+`TIME_SET` (4 → 3), and `OVERLAY_CHANGED` and `DATE_CHANGED` (3 → 2). No frame timing was measured:
+nothing in the batch runs on a drawing path.
+
+SUI-5b, SUI-5d, SUI-5e and SUI-5f were closed without a change; the reasons are in
+`BACKLOG-systemui.md`.
+
 ## Experiments that were not merged
 
 | Change | Result | Decision |
