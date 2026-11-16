@@ -197,7 +197,7 @@ public class LauncherAppState implements SafeCloseable {
         mIconCache = new IconCache(mContext, mInvariantDeviceProfile,
                 iconCacheFileName, mIconProvider);
         mAppliedIconDpi = mInvariantDeviceProfile.fillResIconDpi;
-        mAppliedIconSize = mInvariantDeviceProfile.iconBitmapSize;
+        mAppliedIconSize = cacheIconSize();
         mModel = new LauncherModel(context, this, mIconCache, new AppFilter(mContext),
                 PackageManagerHelper.INSTANCE.get(context), iconCacheFileName != null);
         mOnTerminateCallback.add(mIconCache::close);
@@ -234,7 +234,7 @@ public class LauncherAppState implements SafeCloseable {
      */
     public void reloadAfterGridChange() {
         if (mInvariantDeviceProfile.fillResIconDpi == mAppliedIconDpi
-                && mInvariantDeviceProfile.iconBitmapSize == mAppliedIconSize) {
+                && cacheIconSize() == mAppliedIconSize) {
             mModel.forceReload();
         } else {
             refreshAndReloadLauncher();
@@ -254,10 +254,20 @@ public class LauncherAppState implements SafeCloseable {
         }
     }
 
+    /**
+     * Evergreen: the icon size the cache and its DB use. It must match the size IconCache opens
+     * the DB with (SUI-5c): the DB version is this size, so a different value drops the table on
+     * the next open.
+     */
+    private int cacheIconSize() {
+        return Math.max(mInvariantDeviceProfile.iconBitmapSize,
+                mInvariantDeviceProfile.allAppsIconBitmapSize);
+    }
+
     private void refreshAndReloadLauncher() {
         LauncherIcons.clearPool(mContext);
         mAppliedIconDpi = mInvariantDeviceProfile.fillResIconDpi;
-        mAppliedIconSize = mInvariantDeviceProfile.iconBitmapSize;
+        mAppliedIconSize = cacheIconSize();
         mIconCache.updateIconParams(mAppliedIconDpi, mAppliedIconSize);
         mModel.forceReload();
     }

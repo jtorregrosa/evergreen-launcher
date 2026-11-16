@@ -14,6 +14,7 @@ import android.content.Intent.ACTION_TIME_CHANGED
 import android.content.IntentFilter
 import android.content.pm.ActivityInfo
 import android.content.pm.LauncherActivityInfo
+import android.content.pm.LauncherApps
 import android.content.res.Resources
 import android.graphics.drawable.AdaptiveIconDrawable
 import android.graphics.drawable.ColorDrawable
@@ -368,22 +369,29 @@ class LawnchairIconProvider @JvmOverloads constructor(
             val iconPack = IconPackProvider.INSTANCE.get(context).getIconPack(iconPackPackage)
                 ?.apply { loadBlocking() } ?: return
             when (intent.action) {
-                ACTION_TIMEZONE_CHANGED, ACTION_TIME_CHANGED -> {
-                    context.getSystemService<UserManager>()?.userProfiles?.forEach { user ->
-                        iconPack.getClocks().forEach { componentName ->
-                            callback.onAppIconChanged(
-                                componentName.packageName,
-                                user,
-                            )
-                        }
-                    }
-                }
+                ACTION_TIMEZONE_CHANGED, ACTION_TIME_CHANGED ->
+                    notifyInstalled(context, iconPack.getClocks())
 
-                ACTION_DATE_CHANGED -> {
-                    context.getSystemService<UserManager>()?.userProfiles?.forEach { user ->
-                        iconPack.getCalendars().forEach { componentName ->
-                            callback.onAppIconChanged(componentName.packageName, user)
-                        }
+                ACTION_DATE_CHANGED -> notifyInstalled(context, iconPack.getCalendars())
+            }
+        }
+
+        /**
+         * Evergreen (SUI-21): one update per installed package and user. A pack lists many
+         * clock and calendar components, often several per package and mostly for apps that are
+         * not installed; each callback queues a model package update.
+         */
+        private fun notifyInstalled(context: Context, components: Collection<ComponentName>) {
+            val packages = components.mapTo(LinkedHashSet()) { it.packageName }
+            if (packages.isEmpty()) return
+            val launcherApps = context.getSystemService<LauncherApps>() ?: return
+            context.getSystemService<UserManager>()?.userProfiles?.forEach { user ->
+                packages.forEach { packageName ->
+                    val enabled = runCatching {
+                        launcherApps.isPackageEnabled(packageName, user)
+                    }.getOrDefault(false)
+                    if (enabled) {
+                        callback.onAppIconChanged(packageName, user)
                     }
                 }
             }
