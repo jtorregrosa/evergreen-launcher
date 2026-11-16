@@ -30,7 +30,6 @@ import com.android.launcher3.graphics.LauncherPreviewRenderer;
 import com.android.launcher3.pm.UserCache;
 import com.android.launcher3.util.MainThreadInitializedObject;
 import com.android.launcher3.util.SafeCloseable;
-import com.android.launcher3.util.Themes;
 import com.android.launcher3.util.UserIconInfo;
 
 import java.util.concurrent.ConcurrentLinkedQueue;
@@ -60,13 +59,15 @@ public class LauncherIcons extends BaseIconFactory implements AutoCloseable {
 
     private MonochromeIconFactory mMonochromeIconFactory;
 
-    public boolean mMonoIconEnabled = false;
-
     protected LauncherIcons(Context context, int fillResIconDpi, int iconBitmapSize,
             ConcurrentLinkedQueue<LauncherIcons> pool) {
         super(context, fillResIconDpi, iconBitmapSize,
                 IconShape.INSTANCE.get(context).getShape().enableShapeDetection());
-        mMonoIconEnabled = Themes.isThemedIconEnabled(context);
+        // Evergreen (SUI-B3): this class used to declare its own mMonoIconEnabled, which hid
+        // BaseIconFactory's field, so the base factory and ClockDrawableWrapper always read
+        // false. That is the behaviour every release has shipped: themed icons come from
+        // LawnchairIconProvider, not from the base mono-bitmap path. The shadowing field is gone
+        // and the base field keeps its default (false), so nothing changes at runtime.
         mPool = pool;
     }
 
