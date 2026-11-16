@@ -424,6 +424,13 @@ components are kept by the existing rules, and the remaining `Class.forName` cal
 classes. The smoke test, every settings section, the icon style screen, the widget picker and drawer
 search ran with no crashes.
 
+**Regression found later:** placing a widget crashed the loader thread. protobuf-lite reads message
+fields by name through reflection when a message is built, and R8 had removed fields with no direct
+reads (`LauncherAtom$Widget.appWidgetId_`), so `StatsLogCompatManager` failed on
+`PendingAddWidgetInfo.buildProto`. The review above missed it because the widget picker was opened
+but no widget was dropped. `proguard.pro` now keeps the fields of every `GeneratedMessageLite`
+subclass; R8's `usage.txt` lists no removed proto fields after the change.
+
 The settings walk found a crash that predates this change (also in the control build): the About
 screen drew the Evergreen icon with `painterResource()`, which rejects the `layer-list` added in the
 rebrand. It now uses `rememberDrawablePainter`.

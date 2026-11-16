@@ -59,5 +59,12 @@
 
 -keep class com.google.protobuf.Timestamp { *; }
 
+# Evergreen: protobuf-lite finds message fields by name through reflection when a message is
+# built. Once EVG-5b dropped the blanket com.android.** keep, R8 removed fields it saw no reads of
+# (LauncherAtom$Widget.appWidgetId_), and placing a widget crashed in StatsLogCompatManager.
+-keepclassmembers class * extends com.google.protobuf.GeneratedMessageLite {
+    <fields>;
+}
+
 # TODO: Remove this after the change in https://github.com/ChickenHook/RestrictionBypass/pull/9 has been released.
 -keep class org.chickenhook.restrictionbypass.** { *; }
